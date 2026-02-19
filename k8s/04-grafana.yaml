@@ -7,69 +7,190 @@ data:
   gpu-comparison.json: |
     {
       "dashboard": {
-        "title": "GPU MIG vs Time Slicing Comparison",
+        "title": "GPU MIG vs Time Slicing - Live Comparison",
         "uid": "gpu-comparison",
-        "version": 1,
+        "version": 2,
         "refresh": "5s",
+        "timezone": "browser",
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
         "panels": [
           {
             "id": 1,
-            "title": "GPU Utilization (%)",
-            "type": "graph",
+            "title": "GPU Utilization % (Time Slicing vs MIG)",
+            "type": "timeseries",
             "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
             "targets": [
               {
                 "expr": "rate(nvidia_dcgm_exporter_gpu_utilization_seconds_total[1m]) * 100",
-                "legendFormat": "GPU {{gpu}}"
+                "legendFormat": "GPU {{gpu}}",
+                "refId": "A"
               }
-            ]
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "percent",
+                "thresholds": {
+                  "steps": [
+                    {"color": "green", "value": null},
+                    {"color": "yellow", "value": 70},
+                    {"color": "red", "value": 90}
+                  ]
+                }
+              }
+            }
           },
           {
             "id": 2,
-            "title": "Memory Usage (MB)",
-            "type": "graph",
+            "title": "Memory Usage MB (Compare Before/After)",
+            "type": "timeseries",
             "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
             "targets": [
               {
                 "expr": "nvidia_dcgm_exporter_memory_used_bytes / 1024 / 1024",
-                "legendFormat": "GPU {{gpu}}"
+                "legendFormat": "GPU {{gpu}} Used",
+                "refId": "A"
+              },
+              {
+                "expr": "nvidia_dcgm_exporter_memory_total_bytes / 1024 / 1024",
+                "legendFormat": "GPU {{gpu}} Total",
+                "refId": "B"
               }
             ]
           },
           {
             "id": 3,
-            "title": "Active MIG Instances",
+            "title": "MIG Active Instances",
             "type": "stat",
             "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
             "targets": [
               {
                 "expr": "count(nvidia_dcgm_exporter_mig_active_instances > 0)",
-                "legendFormat": "Active"
+                "legendFormat": "Active MIG Instances",
+                "refId": "A"
               }
             ]
           },
           {
             "id": 4,
-            "title": "Pod Latency (ms)",
-            "type": "graph",
+            "title": "Pod Latency (ms) - Contention Indicator",
+            "type": "timeseries",
             "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
             "targets": [
               {
                 "expr": "rate(container_network_receive_bytes_total{pod=~\"moshi.*\"}[1m])",
-                "legendFormat": "Pod {{pod}}"
+                "legendFormat": "Pod {{pod}}",
+                "refId": "A"
               }
             ]
           },
           {
             "id": 5,
-            "title": "Isolation Status",
+            "title": "MIG Instance Status Map",
             "type": "statusmap",
             "gridPos": {"h": 6, "w": 12, "x": 12, "y": 12},
             "targets": [
               {
                 "expr": "nvidia_dcgm_exporter_mig_active_instances",
-                "legendFormat": "MIG {{instance}}"
+                "legendFormat": "MIG {{instance}}",
+                "refId": "A"
               }
+            ]
+          },
+          {
+            "id": 6,
+            "title": "Container Restarts (Fault Isolation Test)",
+            "type": "timeseries",
+            "gridPos": {"h": 6, "w": 12, "x": 0, "y": 20},
+            "targets": [
+              {
+                "expr": "kube_pod_container_status_restarts_total{pod=~\"moshi.*\"}",
+                "legendFormat": "Pod {{pod}} restarts",
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 7,
+            "title": "Time Slicing vs MIG - Summary",
+            "type": "stat",
+            "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8},
+            "targets": [
+              {
+                "expr": "nvidia_dcgm_exporter_mig_mode",
+                "legendFormat": "MIG Mode",
+                "refId": "A"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  before-mig-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "BEFORE MIG - Time Slicing Mode",
+        "uid": "before-mig",
+        "tags": ["time-slicing", "before"],
+        "panels": [
+          {
+            "id": 1,
+            "title": "GPU Memory Contention",
+            "type": "graph",
+            "targets": [
+              {"expr": "nvidia_dcgm_exporter_memory_used_bytes/1024/1024", "legendFormat": "Used MB"}
+            ]
+          },
+          {
+            "id": 2,
+            "title": "Pods Affected by OOM",
+            "type": "table",
+            "targets": [
+              {"expr": "kube_pod_container_status_last_terminated_reason{reason=\"OOMKilled\"}", "legendFormat": "{{pod}}"}
+            ]
+          }
+        ]
+      }
+    }
+  after-mig-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "AFTER MIG - Isolated Instances",
+        "uid": "after-mig",
+        "tags": ["mig", "after"],
+        "panels": [
+          {
+            "id": 1,
+            "title": "MIG-1g.6gb Memory",
+            "type": "graph",
+            "targets": [
+              {"expr": "nvidia_dcgm_exporter_memory_used_bytes{mig_instance=\"1g.6gb\"}/1024/1024", "legendFormat": "MIG-1g"}
+            ]
+          },
+          {
+            "id": 2,
+            "title": "MIG-2g.12gb Memory",
+            "type": "graph",
+            "targets": [
+              {"expr": "nvidia_dcgm_exporter_memory_used_bytes{mig_instance=\"2g.12gb\"}/1024/1024", "legendFormat": "MIG-2g"}
+            ]
+          },
+          {
+            "id": 3,
+            "title": "MIG-3g.24gb Memory",
+            "type": "graph",
+            "targets": [
+              {"expr": "nvidia_dcgm_exporter_memory_used_bytes{mig_instance=\"3g.24gb\"}/1024/1024", "legendFormat": "MIG-3g"}
+            ]
+          },
+          {
+            "id": 4,
+            "title": "No Cross-Container Contamination",
+            "type": "stat",
+            "targets": [
+              {"expr": "count(kube_pod_container_status_last_terminated_reason{reason=\"OOMKilled\"})", "legendFormat": "OOM Events"}
             ]
           }
         ]
