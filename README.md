@@ -1,5 +1,10 @@
 # GPU MIG Presentation Infrastructure
 
+![GitHub](https://img.shields.io/github/license/jeremiepas/gpu-mig-presentation)
+![GitHub repo](https://img.shields.io/github/repo-size/jeremiepas/gpu-mig-presentation)
+
+Private GitHub repo: https://github.com/jeremiepas/gpu-mig-presentation
+
 Terraform + Kubernetes infrastructure for GPU MIG vs Time Slicing presentation demo.
 
 ## Prerequisites
