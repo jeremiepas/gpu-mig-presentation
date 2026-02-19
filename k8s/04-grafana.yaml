@@ -1,0 +1,150 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+data:
+  gpu-comparison.json: |
+    {
+      "dashboard": {
+        "title": "GPU MIG vs Time Slicing Comparison",
+        "uid": "gpu-comparison",
+        "version": 1,
+        "refresh": "5s",
+        "panels": [
+          {
+            "id": 1,
+            "title": "GPU Utilization (%)",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+            "targets": [
+              {
+                "expr": "rate(nvidia_dcgm_exporter_gpu_utilization_seconds_total[1m]) * 100",
+                "legendFormat": "GPU {{gpu}}"
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "title": "Memory Usage (MB)",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+            "targets": [
+              {
+                "expr": "nvidia_dcgm_exporter_memory_used_bytes / 1024 / 1024",
+                "legendFormat": "GPU {{gpu}}"
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "title": "Active MIG Instances",
+            "type": "stat",
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
+            "targets": [
+              {
+                "expr": "count(nvidia_dcgm_exporter_mig_active_instances > 0)",
+                "legendFormat": "Active"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "title": "Pod Latency (ms)",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 12},
+            "targets": [
+              {
+                "expr": "rate(container_network_receive_bytes_total{pod=~\"moshi.*\"}[1m])",
+                "legendFormat": "Pod {{pod}}"
+              }
+            ]
+          },
+          {
+            "id": 5,
+            "title": "Isolation Status",
+            "type": "statusmap",
+            "gridPos": {"h": 6, "w": 12, "x": 12, "y": 12},
+            "targets": [
+              {
+                "expr": "nvidia_dcgm_exporter_mig_active_instances",
+                "legendFormat": "MIG {{instance}}"
+              }
+            ]
+          }
+        ]
+      }
+    }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grafana
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: grafana
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: grafana
+    namespace: monitoring
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      serviceAccountName: grafana
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: "admin"
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: "admin"
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+          volumeMounts:
+            - name: grafana-storage
+              mountPath: /var/lib/grafana
+            - name: grafana-dashboards
+              mountPath: /etc/grafana/provisioning/dashboards
+      volumes:
+        - name: grafana-storage
+          emptyDir: {}
+        - name: grafana-dashboards
+          configMap:
+            name: grafana-dashboards
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  type: NodePort
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30300
+  selector:
+    app: grafana

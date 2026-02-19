@@ -1,0 +1,62 @@
+name: Destroy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "destroy" to confirm'
+        required: true
+        type: string
+
+jobs:
+  destroy:
+    name: Terraform Destroy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Configure Scaleway Provider
+        env:
+          SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+          SCW_PROJECT_ID: ${{ secrets.SCW_PROJECT_ID }}
+        run: |
+          cat > terraform/backend.tf << EOF
+          terraform {
+            backend "local" {
+              path = "terraform.tfstate"
+            }
+          }
+          EOF
+          
+          cat > terraform/terraform.tfvars << EOF
+          region = "fr-par"
+          zone = "fr-par-1"
+          project_id = "$SCW_PROJECT_ID"
+          instance_type = "L4-2G-24G"
+          instance_name = "gpu-mig-demo"
+          EOF
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Destroy
+        working-directory: ./terraform
+        env:
+          SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+          CONFIRM: ${{ github.inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" = "destroy" ]; then
+            terraform destroy -auto-approve
+          else
+            echo "Confirmation not matched. Skipping destroy."
+            exit 1
+          fi

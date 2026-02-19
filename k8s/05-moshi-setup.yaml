@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moshi-models
+  namespace: moshi-demo
+data:
+  download-models.sh: |
+    #!/bin/bash
+    set -e
+    
+    mkdir -p /models
+    
+    # Download minimal moshi models (moshi-stt, moshi-tts)
+    aria2c --disable-ipv6 -i /models/moshi-defaults.txt -d /models || true
+    
+    echo "Models downloaded to /models"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: moshi-download
+  namespace: moshi-demo
+spec:
+  template:
+    metadata:
+      labels:
+        app: moshi-download
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: download
+          image: alpine/aria2:latest
+          command: ["/bin/sh", "/scripts/download-models.sh"]
+          volumeMounts:
+            - name: models
+              mountPath: /models
+            - name: scripts
+              mountPath: /scripts
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+      volumes:
+        - name: models
+          emptyDir: {}
+        - name: scripts
+          configMap:
+            name: moshi-models
+            defaultMode: 0755

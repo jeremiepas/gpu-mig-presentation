@@ -1,0 +1,138 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  terraform:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Configure Scaleway Provider
+        env:
+          SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+          SCW_PROJECT_ID: ${{ secrets.SCW_PROJECT_ID }}
+        run: |
+          cat > terraform/backend.tf << EOF
+          terraform {
+            backend "local" {
+              path = "terraform.tfstate"
+            }
+          }
+          EOF
+          
+          cat > terraform/terraform.tfvars << EOF
+          region = "fr-par"
+          zone = "fr-par-1"
+          project_id = "$SCW_PROJECT_ID"
+          instance_type = "L4-2G-24G"
+          instance_name = "gpu-mig-demo"
+          EOF
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        env:
+          SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        env:
+          SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Save Outputs
+        id: outputs
+        working-directory: ./terraform
+        run: |
+          echo "instance_ip=$(terraform output -raw instance_ip)" >> $GITHUB_OUTPUT
+          cat .env >> $GITHUB_ENV
+
+  setup-k8s:
+    name: Setup Kubernetes
+    needs: terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        run: |
+          echo "${{ env.INSTANCE_IP }} gpu-node" >> /etc/hosts
+          mkdir -p ~/.kube
+          echo "${{ secrets.K3S_KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Wait for K3s
+        run: |
+          sleep 60
+          kubectl get nodes
+
+      - name: Deploy GPU Operator
+        run: |
+          kubectl apply -f k8s/00-namespaces.yaml
+          kubectl apply -f k8s/01-gpu-operator.yaml
+
+      - name: Deploy Monitoring
+        run: |
+          kubectl apply -f k8s/03-prometheus.yaml
+          kubectl apply -f k8s/04-grafana.yaml
+
+      - name: Deploy Time Slicing Config
+        run: |
+          kubectl apply -f k8s/02-timeslicing-config.yaml
+
+      - name: Deploy Demo Pods
+        run: |
+          kubectl apply -f k8s/05-moshi-setup.yaml
+          kubectl apply -f k8s/06-moshi-timeslicing.yaml
+
+      - name: Wait for pods
+        run: |
+          sleep 30
+          kubectl get pods -A
+
+  deploy-mig:
+    name: Deploy MIG Demo
+    needs: setup-k8s
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup kubectl
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.K3S_KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy MIG Config
+        run: |
+          kubectl apply -f k8s/02-mig-config.yaml
+          kubectl apply -f k8s/07-moshi-mig.yaml
+
+      - name: Final Status
+        run: |
+          kubectl get pods -n moshi-demo
+          kubectl get pods -n monitoring
+          echo "=== GPU Nodes ==="
+          kubectl get nodes -o wide
+          echo "=== GPU Devices ==="
+          kubectl get nodes -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}'

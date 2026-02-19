@@ -1,0 +1,103 @@
+# Demo 2: MIG Mode
+# Each pod gets isolated MIG instance
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mig-test
+  namespace: moshi-demo
+data:
+  test-mig-share.sh: |
+    #!/bin/bash
+    # Show MIG instance info
+    nvidia-smi -L
+    nvidia-smi --query-gpu=index,name,memory.used,memory.total,utilization.gpu,mig.mode --format=csv
+    echo "---"
+    echo "Running MIG demo pod: $(hostname)"
+    sleep infinity
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: moshi-mig-1
+  namespace: moshi-demo
+  labels:
+    demo: mig
+    app: moshi
+spec:
+  restartPolicy: Always
+  containers:
+    - name: moshi
+      image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
+      command: ["/bin/sh", "/scripts/test-mig-share.sh"]
+      env:
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "mig-1g.6gb"
+      volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+  volumes:
+    - name: scripts
+      configMap:
+        name: mig-test
+        defaultMode: 0755
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: moshi-mig-2
+  namespace: moshi-demo
+  labels:
+    demo: mig
+    app: moshi
+spec:
+  restartPolicy: Always
+  containers:
+    - name: moshi
+      image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
+      command: ["/bin/sh", "/scripts/test-mig-share.sh"]
+      env:
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "mig-2g.12gb"
+      volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+  volumes:
+    - name: scripts
+      configMap:
+        name: mig-test
+        defaultMode: 0755
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: moshi-mig-3
+  namespace: moshi-demo
+  labels:
+    demo: mig
+    app: moshi
+spec:
+  restartPolicy: Always
+  containers:
+    - name: moshi
+      image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
+      command: ["/bin/sh", "/scripts/test-mig-share.sh"]
+      env:
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "mig-3g.24gb"
+      volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+  volumes:
+    - name: scripts
+      configMap:
+        name: mig-test
+        defaultMode: 0755

@@ -1,0 +1,41 @@
+variable "region" {
+  description = "Scaleway region"
+  type       = string
+  default    = "fr-par"
+}
+
+variable "zone" {
+  description = "Scaleway zone"
+  type       = string
+  default    = "fr-par-1"
+}
+
+variable "project_id" {
+  description = "Scaleway project ID"
+  type       = string
+  default    = ""
+}
+
+variable "instance_type" {
+  description = "GPU instance type"
+  type       = string
+  default    = "L4-2G-24G"
+}
+
+variable "instance_name" {
+  description = "Instance name"
+  type       = string
+  default    = "gpu-mig-demo"
+}
+
+variable "ssh_key_path" {
+  description = "Path to SSH public key"
+  type       = string
+  default    = "~/.ssh/id_rsa.pub"
+}
+
+variable "tags" {
+  description = "Tags for resources"
+  type        = list(string)
+  default     = ["mig-demo", "presentation"]
+}
