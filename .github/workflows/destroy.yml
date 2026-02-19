@@ -8,6 +8,11 @@ on:
         required: true
         type: string
 
+env:
+  SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+  SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+  SCW_PROJECT_ID: ${{ secrets.SCW_PROJECT_ID }}
+
 jobs:
   destroy:
     name: Terraform Destroy
@@ -21,27 +26,12 @@ jobs:
         with:
           terraform_version: 1.7.0
 
-      - name: Configure Scaleway Provider
-        env:
-          SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
-          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
-          SCW_PROJECT_ID: ${{ secrets.SCW_PROJECT_ID }}
-        run: |
-          cat > terraform/backend.tf << EOF
-          terraform {
-            backend "local" {
-              path = "terraform.tfstate"
-            }
-          }
-          EOF
-          
-          cat > terraform/terraform.tfvars << EOF
-          region = "fr-par"
-          zone = "fr-par-1"
-          project_id = "$SCW_PROJECT_ID"
-          instance_type = "L4-2G-24G"
-          instance_name = "gpu-mig-demo"
-          EOF
+      - name: Setup AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.SCW_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.SCW_SECRET_KEY }}
+          aws-region: fr-par
 
       - name: Terraform Init
         working-directory: ./terraform
@@ -49,12 +39,8 @@ jobs:
 
       - name: Terraform Destroy
         working-directory: ./terraform
-        env:
-          SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
-          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
-          CONFIRM: ${{ github.inputs.confirm }}
         run: |
-          if [ "$CONFIRM" = "destroy" ]; then
+          if [ "${{ github.inputs.confirm }}" = "destroy" ]; then
             terraform destroy -auto-approve
           else
             echo "Confirmation not matched. Skipping destroy."
