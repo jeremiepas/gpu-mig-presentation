@@ -26,8 +26,10 @@ jobs:
         with:
           terraform_version: 1.7.0
 
-      - name: Configure AWS credentials for Terraform
+      - name: Configure Scaleway credentials for Terraform
         run: |
+          echo "SCW_ACCESS_KEY=${{ secrets.SCW_ACCESS_KEY }}" >> $GITHUB_ENV
+          echo "SCW_SECRET_KEY=${{ secrets.SCW_SECRET_KEY }}" >> $GITHUB_ENV
           echo "AWS_ACCESS_KEY_ID=${{ secrets.SCW_ACCESS_KEY }}" >> $GITHUB_ENV
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.SCW_SECRET_KEY }}" >> $GITHUB_ENV
           echo "AWS_DEFAULT_REGION=fr-par" >> $GITHUB_ENV
