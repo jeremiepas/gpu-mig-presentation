@@ -1,0 +1,46 @@
+#!/bin/bash
+
+echo "Running pre-commit checks..."
+
+cd "$(git rev-parse --show-toplevel)"
+
+errors=0
+
+echo "=== Terraform files ==="
+if command -v terraform &> /dev/null; then
+  cd terraform
+  terraform fmt -recursive -check 2>/dev/null || { echo "Terraform formatting issues"; errors=1; }
+  terraform init -backend=false >/dev/null 2>&1 || { echo "Terraform init failed"; errors=1; }
+  terraform validate >/dev/null 2>&1 || { echo "Terraform validation failed"; errors=1; }
+  cd ..
+else
+  echo "Skipped (terraform not available)"
+fi
+
+echo "=== Kubernetes YAML files ==="
+if python3 -c "import yaml" 2>/dev/null; then
+  for f in $(find k8s -name "*.yaml"); do
+    python3 -c "import yaml; yaml.safe_load(open('$f'))" 2>/dev/null || { echo "Invalid YAML: $f"; errors=1; }
+  done
+else
+  echo "Skipped (pyyaml not available)"
+fi
+
+echo "=== Markdown files ==="
+if command -v python3 &> /dev/null; then
+  for f in $(find . -name "*.md" -not -path "./.git/*"); do
+    python3 -c "import re; content=open('$f').read()" 2>/dev/null || { echo "Cannot read: $f"; errors=1; }
+  done
+else
+  echo "Skipped (python3 not available)"
+fi
+
+if [ $errors -eq 0 ]; then
+  echo ""
+  echo "All checks passed!"
+  exit 0
+else
+  echo ""
+  echo "Some checks failed!"
+  exit 1
+fi
