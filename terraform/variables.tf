@@ -13,7 +13,7 @@ variable "zone" {
 variable "project_id" {
   description = "Scaleway project ID"
   type        = string
-  default     = ""
+  default     = "bbaff92f-ddd8-493b-8d03-05de850deb29"
 }
 
 variable "instance_type" {
