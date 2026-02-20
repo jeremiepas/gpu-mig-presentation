@@ -20,7 +20,7 @@ fi
 echo "=== Kubernetes YAML files ==="
 if python3 -c "import yaml" 2>/dev/null; then
   for f in $(find k8s -name "*.yaml"); do
-    python3 -c "import yaml; yaml.safe_load(open('$f'))" 2>/dev/null || { echo "Invalid YAML: $f"; errors=1; }
+    python3 -c "import yaml; list(yaml.safe_load_all(open('$f')))" 2>/dev/null || { echo "Invalid YAML: $f"; errors=1; }
   done
 else
   echo "Skipped (pyyaml not available)"

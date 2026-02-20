@@ -31,6 +31,7 @@ jobs:
           echo "AWS_ACCESS_KEY_ID=${{ secrets.SCW_ACCESS_KEY }}" >> $GITHUB_ENV
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.SCW_SECRET_KEY }}" >> $GITHUB_ENV
           echo "AWS_DEFAULT_REGION=fr-par" >> $GITHUB_ENV
+          echo "AWS_ENDPOINT_URL_S3=https://s3.fr-par.scw.cloud" >> $GITHUB_ENV
 
       - name: Terraform Init
         working-directory: ./terraform

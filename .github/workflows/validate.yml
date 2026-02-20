@@ -39,5 +39,5 @@ jobs:
       - name: Validate YAML files
         run: |
           for f in $(find k8s -name "*.yaml"); do
-            python3 -c "import yaml; yaml.safe_load(open('$f'))" || exit 1
+            python3 -c "import yaml; list(yaml.safe_load_all(open('$f')))" || exit 1
           done

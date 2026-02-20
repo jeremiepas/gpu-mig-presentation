@@ -1,13 +1,15 @@
 data "scaleway_instance_image" "ubuntu_jammy" {
   architecture = "x86_64"
-  name         = "Ubuntu Jammy GPU"
+  name         = "Ubuntu 22.04 Jammy Jellyfish"
+  zone         = var.zone
 }
 
 resource "scaleway_instance_server" "gpu_server" {
   name  = var.instance_name
   type  = var.instance_type
   zone  = var.zone
-  image = data.scaleway_instance_image.ubuntu_jammy.id
+  image = "a6c68db3-5613-4b08-acaa-2c92d8baf26c"
+  # Use marketplace image ID directly
   ip_id = scaleway_instance_ip.gpu_ip.id
   tags  = var.tags
 
