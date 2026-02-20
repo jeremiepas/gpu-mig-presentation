@@ -7,13 +7,14 @@ terraform {
     }
   }
   backend "s3" {
-    endpoint          = "s3.fr-par.scw.cloud"
-    region            = "fr-par"
-    bucket            = "gpu-mig-presentation-tfstate"
-    key               = "terraform.tfstate"
+    endpoints = {
+      s3 = "s3.fr-par.scw.cloud"
+    }
+    bucket                      = "gpu-mig-presentation-tfstate"
+    key                         = "terraform.tfstate"
     skip_credentials_validation = true
     skip_requesting_account_id  = true
-    force_path_style             = true
+    force_path_style            = true
   }
 }
 

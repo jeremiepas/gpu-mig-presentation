@@ -1,6 +1,6 @@
 output "instance_ip" {
   description = "Public IP of the GPU instance"
-  value       = scaleway_instance_server.gpu_server.public_ip
+  value       = scaleway_instance_server.gpu_server.public_ips[0]
 }
 
 output "instance_id" {
