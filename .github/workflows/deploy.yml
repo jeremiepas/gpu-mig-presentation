@@ -39,6 +39,11 @@ jobs:
         run: |
           aws s3 mb s3://gpu-mig-presentation-tfstate --endpoint-url=https://s3.fr-par.scw.cloud 2>/dev/null || echo "Bucket may already exist"
 
+      - name: Import existing bucket
+        working-directory: ./terraform
+        run: |
+          terraform import scaleway_object_bucket.tfstate fr-par/gpu-mig-presentation-tfstate 2>/dev/null || true
+
       - name: Terraform Init
         working-directory: ./terraform
         run: terraform init
