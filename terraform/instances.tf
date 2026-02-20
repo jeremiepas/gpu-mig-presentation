@@ -8,14 +8,15 @@ resource "scaleway_instance_server" "gpu_server" {
   name  = var.instance_name
   type  = var.instance_type
   zone  = var.zone
-  image = "a6c68db3-5613-4b08-acaa-2c92d8baf26c"
-  # Use marketplace image ID directly
+  image = "741cfd27-a822-4c82-b80f-973b562743ad"
   ip_id = scaleway_instance_ip.gpu_ip.id
   tags  = var.tags
 
   root_volume {
     delete_on_termination = true
   }
+
+  additional_volume_ids = [scaleway_instance_volume.data_volume.id]
 
   user_data = {
     "user-data" = templatefile("${path.module}/cloud-init.yaml.tpl", {
@@ -26,6 +27,12 @@ resource "scaleway_instance_server" "gpu_server" {
   lifecycle {
     create_before_destroy = true
   }
+}
+
+resource "scaleway_instance_volume" "data_volume" {
+  zone       = var.zone
+  type       = "b_ssd"
+  size_in_gb = 125
 }
 
 resource "scaleway_instance_ip" "gpu_ip" {

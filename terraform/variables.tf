@@ -19,13 +19,13 @@ variable "project_id" {
 variable "instance_type" {
   description = "GPU instance type"
   type        = string
-  default     = "L4-2G-24G"
+  default     = "L4-1-24G"
 }
 
 variable "instance_name" {
   description = "Instance name"
   type        = string
-  default     = "gpu-mig-demo"
+  default     = "scw-cool-lamport-system"
 }
 
 variable "ssh_key_path" {
