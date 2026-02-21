@@ -31,7 +31,7 @@ resource "scaleway_instance_server" "gpu_server" {
 
 resource "scaleway_instance_volume" "data_volume" {
   zone       = var.zone
-  type       = "b_ssd"
+  type       = "sbs_volume"
   size_in_gb = 125
 }
 
