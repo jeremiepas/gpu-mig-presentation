@@ -40,7 +40,7 @@ jobs:
       - name: Terraform Destroy
         working-directory: ./terraform
         run: |
-          if [ "${{ github.inputs.confirm }}" = "destroy" ]; then
+          if [ "${{ github.event.inputs.confirm }}" = "destroy" ]; then
             terraform destroy -auto-approve
           else
             echo "Confirmation not matched. Skipping destroy."
