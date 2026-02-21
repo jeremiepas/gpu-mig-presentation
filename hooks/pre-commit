@@ -10,6 +10,7 @@ echo "=== Terraform files ==="
 if command -v terraform &> /dev/null; then
   cd terraform
   terraform fmt -recursive -check 2>/dev/null || { echo "Terraform formatting issues"; errors=1; }
+  source ../credentials.env 2>/dev/null || true
   terraform init -backend=false >/dev/null 2>&1 || { echo "Terraform init failed"; errors=1; }
   terraform validate >/dev/null 2>&1 || { echo "Terraform validation failed"; errors=1; }
   cd ..

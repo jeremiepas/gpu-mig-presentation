@@ -32,17 +32,6 @@ jobs:
           echo "SCW_SECRET_KEY=${{ secrets.SCW_SECRET_KEY }}" >> $GITHUB_ENV
           echo "AWS_ACCESS_KEY_ID=${{ secrets.SCW_ACCESS_KEY }}" >> $GITHUB_ENV
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.SCW_SECRET_KEY }}" >> $GITHUB_ENV
-          echo "AWS_DEFAULT_REGION=fr-par" >> $GITHUB_ENV
-          echo "AWS_ENDPOINT_URL_S3=https://s3.fr-par.scw.cloud" >> $GITHUB_ENV
-
-      - name: Create S3 bucket if not exists
-        run: |
-          aws s3 mb s3://gpu-mig-presentation-tfstate --endpoint-url=https://s3.fr-par.scw.cloud 2>/dev/null || echo "Bucket may already exist"
-
-      - name: Import existing bucket
-        working-directory: ./terraform
-        run: |
-          terraform import scaleway_object_bucket.tfstate fr-par/gpu-mig-presentation-tfstate 2>/dev/null || true
 
       - name: Terraform Init
         working-directory: ./terraform
