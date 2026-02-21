@@ -2,8 +2,13 @@
 package_update: true
 package_upgrade: true
 
-ssh_authorized_keys:
-  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFgYIuJ4GPLKOezfwkLVmcQEJQJblgbO4st51x1A67EL github-actions
+users:
+  - name: ubuntu
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFgYIuJ4GPLKOezfwkLVmcQEJQJblgbO4st51x1A67EL github-actions
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: sudo
+    shell: /bin/bash
 
 packages:
   - curl

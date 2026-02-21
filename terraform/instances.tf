@@ -2,13 +2,9 @@ resource "scaleway_instance_server" "gpu_server" {
   name  = var.instance_name
   type  = var.instance_type
   zone  = var.zone
-  image = "ubuntu_noble_gpu_os_13_nvidia"
+  image = "8579a372-b98a-4615-89cd-8b27a1b1f5bd"
   ip_id = scaleway_instance_ip.gpu_ip.id
   tags  = var.tags
-
-  root_volume {
-    delete_on_termination = true
-  }
 
   user_data = {
     "user-data" = templatefile("${path.module}/cloud-init.yaml.tpl", {
