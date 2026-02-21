@@ -7,7 +7,7 @@ variable "region" {
 variable "zone" {
   description = "Scaleway zone"
   type        = string
-  default     = "fr-par-1"
+  default     = "fr-par-2"
 }
 
 variable "project_id" {
@@ -19,7 +19,7 @@ variable "project_id" {
 variable "instance_type" {
   description = "GPU instance type"
   type        = string
-  default     = "L4-1-24G"
+  default     = "H100-1-80G"
 }
 
 variable "instance_name" {
