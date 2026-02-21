@@ -1,23 +1,14 @@
-data "scaleway_instance_image" "ubuntu_jammy" {
-  architecture = "x86_64"
-  name         = "Ubuntu 22.04 Jammy Jellyfish"
-  zone         = var.zone
-}
-
 resource "scaleway_instance_server" "gpu_server" {
   name  = var.instance_name
   type  = var.instance_type
   zone  = var.zone
-  image = data.scaleway_instance_image.ubuntu_jammy.id
+  image = "741cfd27-a822-4c82-b80f-973b562743ad"
   ip_id = scaleway_instance_ip.gpu_ip.id
   tags  = var.tags
 
   root_volume {
     delete_on_termination = true
   }
-
-  # L4-2G-24G has 24GB local NVMe, no additional volume needed
-  # additional_volume_ids = [scaleway_instance_volume.data_volume.id]
 
   user_data = {
     "user-data" = templatefile("${path.module}/cloud-init.yaml.tpl", {
@@ -29,13 +20,6 @@ resource "scaleway_instance_server" "gpu_server" {
     create_before_destroy = true
   }
 }
-
-# L4-2G-24G has 24GB local NVMe, no additional volume needed
-# resource "scaleway_instance_volume" "data_volume" {
-#   zone       = var.zone
-#   type       = "sbs_volume"
-#   size_in_gb = 125
-# }
 
 resource "scaleway_instance_ip" "gpu_ip" {
   zone = var.zone
