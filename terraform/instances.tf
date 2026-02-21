@@ -16,7 +16,8 @@ resource "scaleway_instance_server" "gpu_server" {
     delete_on_termination = true
   }
 
-  additional_volume_ids = [scaleway_instance_volume.data_volume.id]
+  # L4-2G-24G has 24GB local NVMe, no additional volume needed
+  # additional_volume_ids = [scaleway_instance_volume.data_volume.id]
 
   user_data = {
     "user-data" = templatefile("${path.module}/cloud-init.yaml.tpl", {
@@ -29,11 +30,12 @@ resource "scaleway_instance_server" "gpu_server" {
   }
 }
 
-resource "scaleway_instance_volume" "data_volume" {
-  zone       = var.zone
-  type       = "sbs_volume"
-  size_in_gb = 125
-}
+# L4-2G-24G has 24GB local NVMe, no additional volume needed
+# resource "scaleway_instance_volume" "data_volume" {
+#   zone       = var.zone
+#   type       = "sbs_volume"
+#   size_in_gb = 125
+# }
 
 resource "scaleway_instance_ip" "gpu_ip" {
   zone = var.zone
