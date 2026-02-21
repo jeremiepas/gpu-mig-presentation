@@ -2,7 +2,7 @@ resource "scaleway_instance_server" "gpu_server" {
   name  = var.instance_name
   type  = var.instance_type
   zone  = var.zone
-  image = "741cfd27-a822-4c82-b80f-973b562743ad"
+  image = "ubuntu_noble_gpu_os_13_nvidia"
   ip_id = scaleway_instance_ip.gpu_ip.id
   tags  = var.tags
 
