@@ -6,16 +6,65 @@ Guidelines for AI coding agents working in this repository.
 
 Terraform + Kubernetes infrastructure for GPU MIG vs Time Slicing demos on Scaleway cloud. Provisions GPU instance (L4-24GB), deploys K3s, GPU operator, Prometheus, Grafana, and demo workloads.
 
+## Environments
+
+This project supports two environments. Both use the same credentials (`source credentials.env`), the difference is only the terraform environment path.
+
+| Environment | Terraform Path | State Backend | Usage |
+|-------------|----------------|---------------|-------|
+| **dev** (default) | `terraform/environments/dev/` | None (local) | Local development, manual deployments |
+| **prod** | `terraform/environments/prod/` | S3 on Scaleway | CI/CD via GitHub Actions |
+
+### Dev Environment (Default)
+
+```bash
+# Load credentials (same for both environments)
+source credentials.env
+
+# Terraform commands with -chdir
+terraform -chdir=terraform/environments/dev init -backend=false
+terraform -chdir=terraform/environments/dev plan -out=tfplan
+terraform -chdir=terraform/environments/dev apply -auto-approve tfplan
+terraform -chdir=terraform/environments/dev destroy
+
+# Get instance IP
+terraform -chdir=terraform/environments/dev output instance_ip
+
+# SSH to instance (uses ssh_key file)
+ssh -i ssh_key ubuntu@<INSTANCE_IP>
+
+# Get kubeconfig from remote
+ssh -i ssh_key ubuntu@<INSTANCE_IP> "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
+sed -i 's|127.0.0.1|<INSTANCE_IP>|g' ~/.kube/config
+
+# Deploy K8s manifests
+kubectl apply -f k8s/00-namespaces.yaml
+kubectl apply -f k8s/04-grafana.yaml
+```
+
+### Prod Environment
+
+Deployed via GitHub Actions (push to `main` branch):
+
+```bash
+# Terraform with prod environment
+terraform -chdir=terraform/environments/prod init
+terraform -chdir=terraform/environments/prod plan -out=tfplan
+terraform -chdir=terraform/environments/prod apply -auto-approve tfplan
+```
+
+State is stored in S3 backend (`s3.fr-par.scw.cloud`).
+
 ## Build/Lint/Test Commands
 
 ### Terraform
 
 ```bash
-terraform init -backend=false  # Initialize without backend
-terraform validate              # Validate configuration
-terraform plan -out=tfplan      # Plan changes
-terraform apply -auto-approve tfplan  # Apply changes
-terraform destroy               # Destroy infrastructure
+terraform -chdir=terraform/environments/dev init -backend=false  # Initialize without backend
+terraform -chdir=terraform/environments/dev validate              # Validate configuration
+terraform -chdir=terraform/environments/dev plan -out=tfplan      # Plan changes
+terraform -chdir=terraform/environments/dev apply -auto-approve tfplan  # Apply changes
+terraform -chdir=terraform/environments/dev destroy               # Destroy infrastructure
 terraform fmt -recursive        # Format files
 ```
 
@@ -130,6 +179,10 @@ kubectl apply -f k8s/02-mig-config.yaml          # MIG
 3. Test locally if possible (terraform plan, kubectl apply --dry-run)
 4. Push changes and wait for CI validation
 5. Merge to main triggers deployment
+
+**Environment Usage:**
+- **dev** (default): Use for local development, testing, and manual deployments. Run terraform commands directly with `source credentials.env`
+- **prod**: Use for production via GitHub Actions. State is stored in S3 backend. Triggered by push to `main` branch
 
 ## Project-Specific Details
 

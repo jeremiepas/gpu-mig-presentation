@@ -2,8 +2,17 @@ name: Deploy Infrastructure
 
 on:
   push:
-    branches: [main]
+    branches: [dev]
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy (dev/prod)'
+        required: true
+        type: choice
+        default: 'dev'
+        options:
+          - dev
+          - prod
 
 env:
   SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
@@ -34,20 +43,25 @@ jobs:
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.SCW_SECRET_KEY }}" >> $GITHUB_ENV
 
       - name: Terraform Init
-        working-directory: ./terraform
-        run: terraform init
+        working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'dev' }}
+        run: |
+          if [ "${{ github.event.inputs.environment || 'dev' }}" = "prod" ]; then
+            terraform init
+          else
+            terraform init -backend=false
+          fi
 
       - name: Terraform Plan
-        working-directory: ./terraform
+        working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'dev' }}
         run: terraform plan -out=tfplan
 
       - name: Terraform Apply
-        working-directory: ./terraform
+        working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'dev' }}
         run: terraform apply -auto-approve tfplan
 
       - name: Save Outputs
         id: outputs
-        working-directory: ./terraform
+        working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'dev' }}
         run: |
           echo "instance_ip=$(terraform output -raw instance_ip | jq -r '.address')" >> $GITHUB_OUTPUT
 

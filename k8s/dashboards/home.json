@@ -1,0 +1,33 @@
+{
+  "dashboard": {
+    "title": "Home - GPU MIG Demo",
+    "uid": "home",
+    "version": 1,
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "",
+        "type": "text",
+        "gridPos": {"h": 5, "w": 24, "x": 0, "y": 0},
+        "options": {"content": "<h1 style='text-align:center;font-size:2.5em;background:-webkit-linear-gradient(#00d4ff,#7b2cbf);-webkit-background-clip:text;-webkit-text-fill-color:transparent;'>GPU MIG vs Time Slicing</h1>\n<h3 style='text-align:center;color:#888;'>Infrastructure Monitoring Dashboard</h3>", "mode": "html"}
+      },
+      {
+        "id": 2,
+        "title": "Quick Access",
+        "type": "text",
+        "gridPos": {"h": 10, "w": 24, "x": 0, "y": 5},
+        "options": {"content": "<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:20px;'>\n<a href='./d/scaleway-resources' style='text-decoration:none;'><div style='background:rgba(255,255,255,0.05);padding:25px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);text-align:center;'><h2 style='color:#00d4ff;'>📊</h2><h3 style='color:#fff;margin:10px 0;'>Scaleway Resources</h3><p style='color:#888;'>CPU, Memory, Disk, Network</p></div></a>\n<a href='./d/mig-vs-timeslicing' style='text-decoration:none;'><div style='background:rgba(255,255,255,0.05);padding:25px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);text-align:center;'><h2 style='color:#00d4ff;'>🚀</h2><h3 style='color:#fff;margin:10px 0;'>MIG vs Time Slicing</h3><p style='color:#888;'>GPU Comparison Dashboard</p></div></a>\n<a href='../prometheus/graph' style='text-decoration:none;'><div style='background:rgba(255,255,255,0.05);padding:25px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);text-align:center;'><h2 style='color:#00d4ff;'>🔍</h2><h3 style='color:#fff;margin:10px 0;'>Prometheus</h3><p style='color:#888;'>Metrics Explorer</p></div></a>\n</div>", "mode": "html"}
+      },
+      {
+        "id": 3,
+        "title": "Instance Info",
+        "type": "text",
+        "gridPos": {"h": 4, "w": 24, "x": 0, "y": 15},
+        "options": {"content": "<div style='text-align:center;padding:15px;background:rgba(255,255,255,0.03);border-radius:10px;'>\n<p style='color:#888;'><strong>Instance:</strong> dev-deployment-test | <strong>Zone:</strong> fr-par-2</p>\n<p style='color:#666;font-size:0.9em;'>DNS: dda6040a-6b4a-46f1-bafb-d8105f7ebc68.pub.instances.scw.cloud | IP: 51.159.131.48</p>\n</div>", "mode": "html"}
+      }
+    ],
+    "time": {"from": "now-6h", "to": "now"},
+    "version": 1
+  }
+}

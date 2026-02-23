@@ -8,7 +8,8 @@ resource "scaleway_instance_server" "gpu_server" {
 
   user_data = {
     "user-data" = templatefile("${path.module}/cloud-init.yaml.tpl", {
-      k3s_token = random_password.k3s_token.result
+      k3s_token      = random_password.k3s_token.result,
+      ssh_public_key = var.ssh_public_key
     })
   }
 

@@ -1,0 +1,2 @@
+# Add billing-api as a Prometheus scrape target via node-exporter port
+# The billing API runs locally on the node, we'll add it as a static target

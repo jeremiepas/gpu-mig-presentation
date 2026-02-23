@@ -3,6 +3,14 @@ name: Destroy Infrastructure
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: 'Environment to destroy (dev/prod)'
+        required: true
+        type: choice
+        default: 'dev'
+        options:
+          - dev
+          - prod
       confirm:
         description: 'Type "destroy" to confirm'
         required: true
@@ -34,11 +42,16 @@ jobs:
           echo "AWS_ENDPOINT_URL_S3=https://s3.fr-par.scw.cloud" >> $GITHUB_ENV
 
       - name: Terraform Init
-        working-directory: ./terraform
-        run: terraform init
+        working-directory: ./terraform/environments/${{ github.event.inputs.environment }}
+        run: |
+          if [ "${{ github.event.inputs.environment }}" = "prod" ]; then
+            terraform init
+          else
+            terraform init -backend=false
+          fi
 
       - name: Terraform Destroy
-        working-directory: ./terraform
+        working-directory: ./terraform/environments/${{ github.event.inputs.environment }}
         run: |
           if [ "${{ github.event.inputs.confirm }}" = "destroy" ]; then
             terraform destroy -auto-approve

@@ -17,25 +17,19 @@ variable "project_id" {
 }
 
 variable "instance_type" {
-  description = "GPU instance type"
+  description = "Instance type for prod environment"
   type        = string
-  default     = "H100-1-80G"
+  default     = "GPU-START1-S"
 }
 
 variable "instance_name" {
   description = "Instance name"
   type        = string
-  default     = "scw-cool-lamport-system"
-}
-
-variable "ssh_public_key" {
-  description = "SSH public key content"
-  type        = string
-  default     = "~/.ssh/id_rsa.pub"
+  default     = "prod-gpu-mig-demo"
 }
 
 variable "tags" {
   description = "Tags for resources"
   type        = list(string)
-  default     = ["mig-demo", "presentation"]
+  default     = ["prod", "gpu-mig", "presentation"]
 }

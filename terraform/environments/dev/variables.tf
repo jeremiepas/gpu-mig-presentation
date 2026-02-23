@@ -17,19 +17,19 @@ variable "project_id" {
 }
 
 variable "instance_type" {
-  description = "GPU instance type"
+  description = "Instance type for dev environment"
   type        = string
-  default     = "H100-1-80G"
+  default     = "DEV1-S"
 }
 
 variable "instance_name" {
   description = "Instance name"
   type        = string
-  default     = "scw-cool-lamport-system"
+  default     = "dev-deployment-test"
 }
 
-variable "ssh_public_key" {
-  description = "SSH public key content"
+variable "ssh_key_path" {
+  description = "Path to SSH public key"
   type        = string
   default     = "~/.ssh/id_rsa.pub"
 }
@@ -37,5 +37,5 @@ variable "ssh_public_key" {
 variable "tags" {
   description = "Tags for resources"
   type        = list(string)
-  default     = ["mig-demo", "presentation"]
+  default     = ["dev", "deployment-test"]
 }

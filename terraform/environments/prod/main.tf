@@ -7,7 +7,7 @@ terraform {
     }
     region                      = "fr-par"
     bucket                      = "gpu-mig-presentation-tfstate"
-    key                         = "terraform.tfstate"
+    key                         = "prod/terraform.tfstate"
     skip_credentials_validation = true
     skip_region_validation      = true
     skip_metadata_api_check     = true
@@ -17,7 +17,7 @@ terraform {
   required_providers {
     scaleway = {
       source  = "scaleway/scaleway"
-      version = "~> 2.40"
+      version = ">= 2.40"
     }
   }
 }

@@ -58,6 +58,14 @@ data:
         static_configs:
           - targets: ['nvidia-dcgm-exporter:9400']
         metrics_path: /metrics
+      - job_name: 'node-exporter'
+        static_configs:
+          - targets: ['node-exporter.monitoring.svc.cluster.local:9100']
+      - job_name: 'billing-api'
+        scrape_interval: 300s
+        static_configs:
+          - targets: ['51.159.131.48:8080']
+        metrics_path: /metrics
 ---
 apiVersion: apps/v1
 kind: Deployment
