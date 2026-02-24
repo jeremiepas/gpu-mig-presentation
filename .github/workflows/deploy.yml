@@ -116,6 +116,9 @@ jobs:
       - name: Set SSH key permissions
         run: chmod 600 ssh_key
 
+      - name: Create kubeconfig directory
+        run: mkdir -p ~/.kube
+
       - name: Deploy cluster using script
         env:
           ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
