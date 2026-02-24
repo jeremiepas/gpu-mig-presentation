@@ -70,6 +70,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Configure Scaleway credentials for Terraform
+        run: |
+          echo "SCW_ACCESS_KEY=${{ secrets.SCW_ACCESS_KEY }}" >> $GITHUB_ENV
+          echo "SCW_SECRET_KEY=${{ secrets.SCW_SECRET_KEY }}" >> $GITHUB_ENV
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.SCW_ACCESS_KEY }}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.SCW_SECRET_KEY }}" >> $GITHUB_ENV
+          echo "AWS_REGION=fr-par" >> $GITHUB_ENV
+          echo "AWS_ENDPOINT_URL_S3=https://s3.fr-par.scw.cloud" >> $GITHUB_ENV
+
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
