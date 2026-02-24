@@ -43,12 +43,7 @@ jobs:
 
       - name: Terraform Init
         working-directory: ./terraform/environments/${{ github.event.inputs.environment }}
-        run: |
-          if [ "${{ github.event.inputs.environment }}" = "prod" ]; then
-            terraform init
-          else
-            terraform init -backend=false
-          fi
+        run: terraform init
 
       - name: Terraform Destroy
         working-directory: ./terraform/environments/${{ github.event.inputs.environment }}

@@ -23,16 +23,23 @@ jobs:
         with:
           terraform_version: 1.7.0
 
+      - name: Configure AWS credentials for Terraform
+        run: |
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.SCW_ACCESS_KEY }}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.SCW_SECRET_KEY }}" >> $GITHUB_ENV
+          echo "AWS_DEFAULT_REGION=fr-par" >> $GITHUB_ENV
+          echo "AWS_ENDPOINT_URL_S3=https://s3.fr-par.scw.cloud" >> $GITHUB_ENV
+
       - name: Terraform Init
-        working-directory: ./terraform
-        run: terraform init -backend=false
+        working-directory: ./terraform/environments/dev
+        run: terraform init
 
       - name: Terraform Validate
-        working-directory: ./terraform
+        working-directory: ./terraform/environments/dev
         run: terraform validate
 
       - name: Terraform Plan
-        working-directory: ./terraform
+        working-directory: ./terraform/environments/dev
         run: terraform plan -out=tfplan
 
   yaml-validate:
