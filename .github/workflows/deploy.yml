@@ -100,18 +100,21 @@ jobs:
 
       - name: Create credentials file
         run: |
-          cat > credentials.env << 'EOF'
-          export SCW_ACCESS_KEY="${{ secrets.SCW_ACCESS_KEY }}"
-          export SCW_SECRET_KEY="${{ secrets.SCW_SECRET_KEY }}"
-          export SCW_PROJECT_ID="${{ secrets.SCW_PROJECT_ID }}"
-          export SCW_ORGANIZATION_ID="${{ secrets.SCW_ORGANIZATION_ID }}"
-          export AWS_ACCESS_KEY_ID="${{ secrets.SCW_ACCESS_KEY }}"
-          export AWS_SECRET_ACCESS_KEY="${{ secrets.SCW_SECRET_KEY }}"
-          export TFSTATE_BUCKET="tfstate-gpu-mig-presentation"
-          export TFSTATE_REGION="fr-par"
-          export TFSTATE_ENDPOINT="https://s3.fr-par.scw.cloud"
-          export SSH_PRIVATE_KEY_FILE="ssh_key"
-          EOF
+           cat > credentials.env << 'EOF'
+           export SCW_ACCESS_KEY="${{ secrets.SCW_ACCESS_KEY }}"
+           export SCW_SECRET_KEY="${{ secrets.SCW_SECRET_KEY }}"
+           export SCW_PROJECT_ID="${{ secrets.SCW_PROJECT_ID }}"
+           export SCW_ORGANIZATION_ID="${{ secrets.SCW_ORGANIZATION_ID }}"
+           export AWS_ACCESS_KEY_ID="${{ secrets.SCW_ACCESS_KEY }}"
+           export AWS_SECRET_ACCESS_KEY="${{ secrets.SCW_SECRET_KEY }}"
+           export TFSTATE_BUCKET="tfstate-gpu-mig-presentation"
+           export TFSTATE_REGION="fr-par"
+           export TFSTATE_ENDPOINT="https://s3.fr-par.scw.cloud"
+           export SSH_PRIVATE_KEY_FILE="ssh_key"
+           EOF
+
+      - name: Set SSH key permissions
+        run: chmod 600 ssh_key
 
       - name: Deploy cluster using script
         env:
