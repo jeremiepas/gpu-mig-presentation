@@ -16,3 +16,4 @@ credentials/
 # OS
 .DS_Store
 Thumbs.db
+k8s/generated/

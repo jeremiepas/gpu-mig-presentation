@@ -1,5 +1,0 @@
-[server]
-51.159.131.48
-
-[all:vars]
-ansible_user=root

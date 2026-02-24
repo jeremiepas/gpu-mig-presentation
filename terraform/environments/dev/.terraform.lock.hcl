@@ -22,7 +22,7 @@ provider "registry.terraform.io/hashicorp/local" {
 
 provider "registry.terraform.io/scaleway/scaleway" {
   version     = "2.69.0"
-  constraints = "~> 2.40"
+  constraints = ">= 2.40.0"
   hashes = [
     "h1:Vf4KB2izoU8jrtqwhAdS1MK0Qlrb+hPJCmEOd/Cdwh4=",
     "zh:10994e9826255cab33394843ebbb3ffa4744afe99adc073df257afd232a53a32",

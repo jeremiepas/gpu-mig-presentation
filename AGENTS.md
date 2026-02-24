@@ -12,7 +12,7 @@ This project supports two environments. Both use the same credentials (`source c
 
 | Environment | Terraform Path | State Backend | Usage |
 |-------------|----------------|---------------|-------|
-| **dev** (default) | `terraform/environments/dev/` | None (local) | Local development, manual deployments |
+| **dev** (default) | `terraform/environments/dev/` | S3 on Scaleway | Local development, manual deployments |
 | **prod** | `terraform/environments/prod/` | S3 on Scaleway | CI/CD via GitHub Actions |
 
 ### Dev Environment (Default)
@@ -22,7 +22,8 @@ This project supports two environments. Both use the same credentials (`source c
 source credentials.env
 
 # Terraform commands with -chdir
-terraform -chdir=terraform/environments/dev init -backend=false
+# Note: No -backend=false needed - dev uses S3 backend by default
+terraform -chdir=terraform/environments/dev init
 terraform -chdir=terraform/environments/dev plan -out=tfplan
 terraform -chdir=terraform/environments/dev apply -auto-approve tfplan
 terraform -chdir=terraform/environments/dev destroy
@@ -55,12 +56,61 @@ terraform -chdir=terraform/environments/prod apply -auto-approve tfplan
 
 State is stored in S3 backend (`s3.fr-par.scw.cloud`).
 
+## State Management
+
+### Dev Environment
+- **State**: S3 backend
+- **Bucket**: `gpu-mig-presentation-tfstate`
+- **Key**: `dev/terraform.tfstate`
+- **Persistence**: Shared via S3, persists across runs
+- **Use case**: Local development and testing
+
+### Prod Environment  
+- **State**: S3 backend
+- **Bucket**: `gpu-mig-presentation-tfstate`
+- **Key**: `prod/terraform.tfstate`
+- **Persistence**: Shared via S3, persists across runs
+- **Use case**: Production deployments via CI/CD
+
+## Cleanup Commands
+
+```bash
+# After terraform destroy, clean up local state files
+rm -f terraform/environments/dev/terraform.tfstate* terraform/environments/dev/.terraform.lock.hcl
+
+# Clean terraform cache
+rm -rf terraform/environments/dev/.terraform
+```
+
+## GitHub CI/CD Setup
+
+### Required Secrets
+Set these in GitHub repository settings:
+- `SCW_ACCESS_KEY` - Scaleway access key
+- `SCW_SECRET_KEY` - Scaleway secret key  
+- `SCW_PROJECT_ID` - Scaleway project ID
+- `SSH_PRIVATE_KEY` - Base64-encoded SSH private key for instance access
+
+### Workflow Triggers
+- **Dev**: Manual only via `workflow_dispatch`
+- **Prod**: Manual only via `workflow_dispatch` with environment selection
+- **Destroy**: Manual only with confirmation
+
+### Deployment Process
+1. Push code changes to any branch
+2. Manually trigger `Deploy Infrastructure` workflow
+3. Select environment (dev/prod)
+4. Workflow runs terraform and kubernetes deployment
+5. For prod, state is stored in S3 for persistence
+
+## Build/Lint/Test Commands
+
 ## Build/Lint/Test Commands
 
 ### Terraform
 
 ```bash
-terraform -chdir=terraform/environments/dev init -backend=false  # Initialize without backend
+terraform -chdir=terraform/environments/dev init  # Initialize with S3 backend (dev)
 terraform -chdir=terraform/environments/dev validate              # Validate configuration
 terraform -chdir=terraform/environments/dev plan -out=tfplan      # Plan changes
 terraform -chdir=terraform/environments/dev apply -auto-approve tfplan  # Apply changes
@@ -181,7 +231,7 @@ kubectl apply -f k8s/02-mig-config.yaml          # MIG
 5. Merge to main triggers deployment
 
 **Environment Usage:**
-- **dev** (default): Use for local development, testing, and manual deployments. Run terraform commands directly with `source credentials.env`
+- **dev** (default): Use for local development, testing, and manual deployments. Run terraform commands directly with `source credentials.env`. State is stored in S3 backend
 - **prod**: Use for production via GitHub Actions. State is stored in S3 backend. Triggered by push to `main` branch
 
 ## Project-Specific Details
