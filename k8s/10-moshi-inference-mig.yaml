@@ -1,0 +1,85 @@
+# Moshi Inference MIG Mode with Prometheus Metrics
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: moshi-inference-mig
+  namespace: moshi-demo
+  labels:
+    app: moshi-inference
+    mode: mig
+spec:
+  restartPolicy: Always
+  containers:
+    - name: moshi
+      image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "Starting Moshi inference in MIG mode (1g.6gb)"
+          pip install prometheus-client -q
+          python3 /scripts/metrics-exporter.py moshi-inference-mig moshi-stt
+      env:
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "mig-1g.6gb"
+      ports:
+        - containerPort: 8000
+          name: metrics
+      volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+          memory: "4Gi"
+          cpu: "2"
+        requests:
+          memory: "2Gi"
+          cpu: "1"
+  volumes:
+    - name: scripts
+      configMap:
+        name: moshi-metrics-scripts
+        defaultMode: 0755
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: moshi-inference-mig-2
+  namespace: moshi-demo
+  labels:
+    app: moshi-inference
+    mode: mig
+spec:
+  restartPolicy: Always
+  containers:
+    - name: moshi
+      image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "Starting Moshi inference in MIG mode (2g.12gb)"
+          pip install prometheus-client -q
+          python3 /scripts/metrics-exporter.py moshi-inference-mig-2 moshi-tts
+      env:
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "mig-2g.12gb"
+      ports:
+        - containerPort: 8000
+          name: metrics
+      volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+          memory: "4Gi"
+          cpu: "2"
+        requests:
+          memory: "2Gi"
+          cpu: "1"
+  volumes:
+    - name: scripts
+      configMap:
+        name: moshi-metrics-scripts
+        defaultMode: 0755

@@ -109,7 +109,7 @@ kubectl apply -f k8s/02-mig-config.yaml          # MIG
 
 ## Cost
 
-- **L4-2G-24G**: ~€0.85/hour
+- **H100-1-80G**: ~€0.85/hour
 - **Presentation (30min setup + 25min demo)**: ~€0.78
 
 ## Cleanup

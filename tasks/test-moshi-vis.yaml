@@ -1,0 +1,22 @@
+{
+  "apiVersion": "v1",
+  "kind": "Pod",
+  "metadata": {
+    "name": "moshi-vis-test",
+    "namespace": "moshi-vis"
+  },
+  "spec": {
+    "containers": [
+      {
+        "name": "curl",
+        "image": "curlimages/curl",
+        "command": [
+          "curl",
+          "-v",
+          "http://moshi-vis-service.moshi-vis.svc.cluster.local"
+        ]
+      }
+    ],
+    "restartPolicy": "Never"
+  }
+}

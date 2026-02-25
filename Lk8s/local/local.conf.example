@@ -1,0 +1,18 @@
+# Local K3s Configuration
+# Copy this file to ~/.Lk8s/local.conf and fill in your values
+
+# ==== Required: K3s Server Information ====
+# The Tailscale IP of your K3s server (you'll get this after setting up Tailscale on Scaleway)
+K3S_SERVER_IP=""
+
+# The K3s agent token (get this from the K3s server)
+# Run on Scaleway: sudo cat /var/lib/rancher/k3s/server/agent-token
+K3S_AGENT_TOKEN=""
+
+# ==== Optional: Node Configuration ====
+# Name for this node in the K3s cluster
+K3S_NODE_NAME="nixos-gpu"
+
+# ==== Tailscale (filled after running setup-tailscale.sh on Scaleway) ====
+# Your Tailscale IP will be shown after running tailscale up
+TAILSCALE_IP=""

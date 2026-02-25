@@ -17,3 +17,4 @@ credentials/
 .DS_Store
 Thumbs.db
 k8s/generated/
+mcp-server/

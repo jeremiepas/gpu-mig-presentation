@@ -1,0 +1,9 @@
+{
+  "project_id": "",
+  "zone": "fr-par-2",
+  "region": "fr-par",
+  "image_name": "gpu-k3s-docker-nixos-23.11",
+  "server_type": "H100-1-80G",
+  "ssh_username": "root",
+  "disk_size": 100
+}

@@ -1,0 +1,124 @@
+name: Build GPU Image with Packer
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_name:
+        description: "Image name (default: gpu-k3s-docker-nixos-23.11)"
+        required: false
+        default: "gpu-k3s-docker-nixos-23.11"
+      server_type:
+        description: "Scaleway server type"
+        required: false
+        default: "H100-1-80G"
+      prepull_images:
+        description: "Pre-pull Docker images"
+        required: false
+        default: "true"
+        type: boolean
+
+env:
+  SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+  SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
+  SCW_PROJECT_ID: ${{ secrets.SCW_PROJECT_ID }}
+
+jobs:
+  validate-packer:
+    name: Validate Packer Configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Packer
+        uses: hashicorp/packer-github-actions@master
+        with:
+          version: 1.10.0
+          command: version
+
+      - name: Validate Packer templates
+        working-directory: ./packer/nixos
+        run: |
+          packer init .
+          packer validate -var "project_id=${{ secrets.SCW_PROJECT_ID }}" .
+
+  build-image:
+    name: Build Image
+    needs: validate-packer
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Packer
+        uses: hashicorp/packer-github-actions@master
+        with:
+          version: 1.10.0
+          command: version
+
+      - name: Configure Scaleway credentials
+        run: |
+          echo "SCW_ACCESS_KEY=${{ secrets.SCW_ACCESS_KEY }}" >> $GITHUB_ENV
+          echo "SCW_SECRET_KEY=${{ secrets.SCW_SECRET_KEY }}" >> $GITHUB_ENV
+
+      - name: Build Image
+        working-directory: ./packer/nixos
+        env:
+          PACKER_LOG: 1
+        run: |
+          packer build \
+            -var "project_id=${{ secrets.SCW_PROJECT_ID }}" \
+            -var "image_name=${{ github.event.inputs.image_name }}" \
+            -var "server_type=${{ github.event.inputs.server_type }}" \
+            .
+
+      - name: Get Image ID
+        id: image-info
+        run: |
+          # Get the built image ID from packer output
+          echo "image_id=$(echo $PACKER_LOG | grep -oP 'fr-par/[^ ]+' | head -1)" >> $GITHUB_OUTPUT
+          echo "Build complete!"
+
+  push-to-registry:
+    name: Push Image to Scaleway
+    needs: build-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Scaleway CLI
+        uses: scaleway/actions-cli@v1
+        with:
+          scw-access-key: ${{ secrets.SCW_ACCESS_KEY }}
+          scw-secret-key: ${{ secrets.SCW_SECRET_KEY }}
+          scw-project-id: ${{ secrets.SCW_PROJECT_ID }}
+
+      - name: List Images
+        run: |
+          scw instance image list
+
+  terraform-update:
+    name: Update Terraform with New Image
+    needs: push-to-registry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure Scaleway credentials
+        run: |
+          echo "SCW_ACCESS_KEY=${{ secrets.SCW_ACCESS_KEY }}" >> $GITHUB_ENV
+          echo "SCW_SECRET_KEY=${{ secrets.SCW_SECRET_KEY }}" >> $GITHUB_ENV
+
+      - name: Update Terraform variables
+        run: |
+          # Update the image_id in terraform variables
+          # This would typically update the base image ID
+          echo "Image build complete! Ready for deployment."
+          echo ""
+          echo "To deploy with the new image:"
+          echo "1. Go to GitHub Actions"
+          echo "2. Run 'Deploy Infrastructure' workflow"
+          echo "3. Select your environment"

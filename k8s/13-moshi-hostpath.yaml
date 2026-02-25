@@ -1,0 +1,202 @@
+# Moshi Inference with Pre-loaded Models (hostPath)
+# This manifest uses hostPath volume to mount pre-cached models
+# Benefits: 10-30 seconds first start instead of 5-10 minutes
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moshi-hostpath-config
+  namespace: moshi-demo
+data:
+  # Model initialization script
+  init-models.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "=== Moshi Models Initialization (hostPath) ==="
+    echo "Models directory: /models"
+    
+    # Verify model manifest
+    if [ -f /models/manifest.json ]; then
+      echo "Model manifest:"
+      cat /models/manifest.json
+    else
+      echo "WARNING: Model manifest not found in /models"
+    fi
+    
+    # List available models
+    echo ""
+    echo "Available models:"
+    ls -la /models/
+    
+    echo ""
+    echo "Disk usage:"
+    du -sh /models
+    
+    echo ""
+    echo "GPU info:"
+    nvidia-smi --query-gpu=name,memory.total,memory.free --format=csv
+    
+    echo "=== Initialization Complete ==="
+    sleep infinity
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: moshi-hostpath
+  namespace: moshi-demo
+  labels:
+    app: moshi
+    type: hostpath-models
+    gpu-mode: timeslicing
+spec:
+  restartPolicy: Always
+  containers:
+    - name: moshi
+      image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
+      command: ["/bin/sh", "/scripts/init-models.sh"]
+      env:
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "all"
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+      volumeMounts:
+        - name: models
+          mountPath: /models
+        - name: scripts
+          mountPath: /scripts
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+        requests:
+          nvidia.com/gpu: "1"
+  volumes:
+    # Use hostPath to mount pre-loaded models from the host
+    - name: models
+      hostPath:
+        path: /opt/moshi/models
+        type: Directory
+    - name: scripts
+      configMap:
+        name: moshi-hostpath-config
+        defaultMode: 0755
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: moshi-hostpath-2
+  namespace: moshi-demo
+  labels:
+    app: moshi
+    type: hostpath-models
+    gpu-mode: timeslicing
+spec:
+  restartPolicy: Always
+  containers:
+    - name: moshi
+      image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
+      command: ["/bin/sh", "/scripts/init-models.sh"]
+      env:
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "all"
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+      volumeMounts:
+        - name: models
+          mountPath: /models
+        - name: scripts
+          mountPath: /scripts
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+        requests:
+          nvidia.com/gpu: "1"
+  volumes:
+    - name: models
+      hostPath:
+        path: /opt/moshi/models
+        type: Directory
+    - name: scripts
+      configMap:
+        name: moshi-hostpath-config
+        defaultMode: 0755
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: moshi-hostpath-3
+  namespace: moshi-demo
+  labels:
+    app: moshi
+    type: hostpath-models
+    gpu-mode: timeslicing
+spec:
+  restartPolicy: Always
+  containers:
+    - name: moshi
+      image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
+      command: ["/bin/sh", "/scripts/init-models.sh"]
+      env:
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "all"
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+      volumeMounts:
+        - name: models
+          mountPath: /models
+        - name: scripts
+          mountPath: /scripts
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+        requests:
+          nvidia.com/gpu: "1"
+  volumes:
+    - name: models
+      hostPath:
+        path: /opt/moshi/models
+        type: Directory
+    - name: scripts
+      configMap:
+        name: moshi-hostpath-config
+        defaultMode: 0755
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: moshi-hostpath-4
+  namespace: moshi-demo
+  labels:
+    app: moshi
+    type: hostpath-models
+    gpu-mode: timeslicing
+spec:
+  restartPolicy: Always
+  containers:
+    - name: moshi
+      image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
+      command: ["/bin/sh", "/scripts/init-models.sh"]
+      env:
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "all"
+        - name: CUDA_VISIBLE_DEVICES
+          value: "0"
+      volumeMounts:
+        - name: models
+          mountPath: /models
+        - name: scripts
+          mountPath: /scripts
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+        requests:
+          nvidia.com/gpu: "1"
+  volumes:
+    - name: models
+      hostPath:
+        path: /opt/moshi/models
+        type: Directory
+    - name: scripts
+      configMap:
+        name: moshi-hostpath-config
+        defaultMode: 0755

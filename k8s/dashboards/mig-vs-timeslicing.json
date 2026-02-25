@@ -311,7 +311,7 @@
         "targets": [
           {
             "expr": "0.85",
-            "legendFormat": "L4-2G-24G",
+            "legendFormat": "H100-1-80G",
             "refId": "A"
           }
         ],

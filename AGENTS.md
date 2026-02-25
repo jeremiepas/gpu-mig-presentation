@@ -65,7 +65,7 @@ State is stored in S3 backend (`s3.fr-par.scw.cloud`).
 - **Persistence**: Shared via S3, persists across runs
 - **Use case**: Local development and testing
 
-### Prod Environment  
+### Prod Environment
 - **State**: S3 backend
 - **Bucket**: `gpu-mig-presentation-tfstate`
 - **Key**: `prod/terraform.tfstate`
@@ -87,7 +87,7 @@ rm -rf terraform/environments/dev/.terraform
 ### Required Secrets
 Set these in GitHub repository settings:
 - `SCW_ACCESS_KEY` - Scaleway access key
-- `SCW_SECRET_KEY` - Scaleway secret key  
+- `SCW_SECRET_KEY` - Scaleway secret key
 - `SCW_PROJECT_ID` - Scaleway project ID
 - `SSH_PRIVATE_KEY` - Base64-encoded SSH private key for instance access
 
@@ -236,12 +236,12 @@ kubectl apply -f k8s/02-mig-config.yaml          # MIG
 
 ## Project-Specific Details
 
-- GPU: NVIDIA L4-24GB (Scaleway L4-2G-24G instance type)
+- GPU: NVIDIA L4-24GB (Scaleway H100-1-80G instance type)
 - MIG profiles on L4: `mig.1g.6gb`, `mig.2g.12gb`, `mig.3g.24gb`
 - Time slicing: 4 GPU replicas by default (configurable)
 - Services: Grafana (port 30300), Prometheus (port 30090), K3s API (port 6443)
 - Default credentials: Grafana admin/admin
-- Estimated cost: ~€0.85/hour for L4-2G-24G instance
+- Estimated cost: ~€0.85/hour for H100-1-80G instance
 
 ## Secrets Management
 

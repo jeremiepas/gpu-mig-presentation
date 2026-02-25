@@ -1,0 +1,9 @@
+server: https://100.119.182.72:6443
+token: "K10e978259227d95ce11b56917280023c0be0db2e40a4cac1b0e5a9013a7b6f814f::server:183a224ac7673f9077cbf01c6d1e11fd"
+node-name: nixos-gpu
+node-label:
+  - "nvidia.com/gpu=true"
+  - "gpu=true"
+  - "hardware.type=nvidia-gpu"
+node-taint:
+  - "nvidia.com/gpu=true:NoSchedule"

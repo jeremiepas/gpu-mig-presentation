@@ -1,0 +1,73 @@
+# Makefile for Packer GPU Image Building
+
+.PHONY: help validate build destroy clean init
+
+help:
+	@echo "Packer GPU Image Builder"
+	@echo ""
+	@echo "Available targets:"
+	@echo "  make init       - Initialize Packer plugins"
+	@echo "  make validate  - Validate Packer templates"
+	@echo "  make build     - Build the GPU image"
+	@echo "  make build-dry - Validate and plan only"
+	@echo "  make clean     - Clean build artifacts"
+	@echo ""
+	@echo "Environment variables:"
+	@echo "  SCW_PROJECT_ID    - Scaleway project ID (required)"
+	@echo "  IMAGE_NAME        - Name for the built image (default: gpu-k3s-docker-nixos-23.11)"
+	@echo "  SERVER_TYPE       - Scaleway server type (default: H100-1-80G)"
+
+init:
+	@echo "Initializing Packer plugins..."
+	cd packer/nixos && packer init .
+
+validate:
+	@echo "Validating Packer templates..."
+	@if [ -z "$(SCW_PROJECT_ID)" ]; then \
+		echo "ERROR: SCW_PROJECT_ID is not set"; \
+		exit 1; \
+	fi
+	cd packer/nixos && packer validate -var "project_id=$(SCW_PROJECT_ID)" .
+
+build-dry: validate
+	@echo "Running build plan (dry run)..."
+	cd packer/nixos && packer build -var "project_id=$(SCW_PROJECT_ID)" \
+		-var "image_name=$(IMAGE_NAME)" \
+		-var "server_type=$(SERVER_TYPE)" \
+		-only=*.scaleway .
+
+build:
+	@echo "Building GPU image..."
+	@if [ -z "$(SCW_PROJECT_ID)" ]; then \
+		echo "ERROR: SCW_PROJECT_ID is not set"; \
+		exit 1; \
+	fi
+	cd packer/nixos && packer build \
+		-var "project_id=$(SCW_PROJECT_ID)" \
+		-var "image_name=$(IMAGE_NAME)" \
+		-var "server_type=$(SERVER_TYPE)" \
+		.
+
+destroy-temp:
+	@echo "Destroying temporary build instance..."
+	# This would destroy any running build instances
+	cd packer/nixos && packer destroy -var "project_id=$(SCW_PROJECT_ID)" .
+
+clean:
+	@echo "Cleaning build artifacts..."
+	rm -rf packer/nixos/output-*
+	rm -f packer/nixos/*.pkrvars.hcl
+	rm -f packer/nixos/packer.log
+
+# Alias for backwards compatibility
+build-nixos: build
+
+# Debug target
+debug:
+	@echo "Packer version:"
+	@packer version
+	@echo ""
+	@echo "Environment:"
+	@echo "  SCW_PROJECT_ID: $(SCW_PROJECT_ID)"
+	@echo "  IMAGE_NAME: $(IMAGE_NAME)"
+	@echo "  SERVER_TYPE: $(SERVER_TYPE)"

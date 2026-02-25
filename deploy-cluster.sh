@@ -179,6 +179,21 @@ sleep 30
 echo "📊 Final cluster status:"
 kubectl get pods -A
 
+# Install and configure Tailscale
+echo "🔧 Installing Tailscale..."
+ssh -i ssh_key -o StrictHostKeyChecking=no ubuntu@$instance_ip << 'ENDSSH'
+    curl -fsSL https://tailscale.com/install.sh | sh
+    sudo tailscale up --auth-key=tskey-auth-koSsqiJcgT11CNTRL-7Beq8JnmQcE8osjJ5t4AcEy2611AVHZm7 --advertise-exit-node
+ENDSSH
+
+# Get K3s agent token for adding worker nodes
+echo "🔑 K3s Agent Token (for adding worker nodes):"
+ssh -i ssh_key -o StrictHostKeyChecking=no ubuntu@$instance_ip "sudo cat /var/lib/rancher/k3s/server/agent-token"
+
+# Get Tailscale IP
+echo "🌐 Tailscale IP:"
+ssh -i ssh_key -o StrictHostKeyChecking=no ubuntu@$instance_ip "tailscale ip -4"
+
 echo ""
 echo "🎉 Deployment complete!"
 echo ""
@@ -193,5 +208,8 @@ echo "📋 To switch GPU modes:"
 echo "   Time Slicing: kubectl apply -f k8s/02-timeslicing-config.yaml"
 echo "   MIG:          kubectl apply -f k8s/02-mig-config.yaml"
 echo ""
-echo "💡 Note: GPU features require a GPU instance type (L4-2G-24G)"
+echo "💡 Note: GPU features require a GPU instance type (H100-1-80G)"
 echo "   Current instance: DEV1-S (non-GPU, for testing only)"
+echo ""
+echo "🔗 To add a K3s agent from another machine, run:"
+echo "   curl -sfL https://get.k3s.io | K3S_URL=https://$instance_ip:6443 K3S_TOKEN=<TOKEN> sh -"

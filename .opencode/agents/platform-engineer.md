@@ -23,7 +23,7 @@ You are a DevOps/Platform Engineer specializing in managing GPU infrastructure o
 
 This project manages GPU infrastructure (NVIDIA L4-24GB) for MIG vs Time Slicing demos:
 - **Cloud Provider**: Scaleway
-- **Compute**: L4-2G-24G instance (24GB VRAM)
+- **Compute**: H100-1-80G instance (24GB VRAM)
 - **Kubernetes**: K3s with NVIDIA GPU Operator
 - **Monitoring**: Prometheus + Grafana
 - **CI/CD**: GitHub Actions
@@ -40,6 +40,7 @@ This project manages GPU infrastructure (NVIDIA L4-24GB) for MIG vs Time Slicing
 This agent has access to specialized skills:
 - **terraform-scaleway**: Manage Scaleway infrastructure with Terraform
 - **grafana-dashboard**: Create and manage Grafana dashboards for GPU monitoring
+- **github-workflow-manager**: Manage GitHub Actions workflow runs and logs
 
 ## Core Responsibilities
 
@@ -86,6 +87,50 @@ This agent has access to specialized skills:
 - Work with GitHub Actions workflows in .github/workflows/
 - Understand deploy, destroy, and validate pipelines
 - Manage secrets (SCW_ACCESS_KEY, SCW_SECRET_KEY, SCW_PROJECT_ID)
+- Monitor and troubleshoot workflow runs using github-workflow-manager skill
+
+#### GitHub Workflow Management
+Common tasks for managing GitHub Actions workflows:
+
+##### List Recent Workflow Runs
+```bash
+gh run list
+```
+
+##### View Details of a Specific Run
+```bash
+gh run view <run-id>
+```
+
+##### View Logs for a Run
+```bash
+# View all logs
+gh run view <run-id> --log
+
+# View only failed job logs
+gh run view <run-id> --log-failed
+```
+
+##### Filter Workflow Runs
+```bash
+# List runs for a specific workflow
+gh run list --workflow=deploy.yml
+
+# List runs on a specific branch
+gh run list --branch=main
+
+# List only failed runs
+gh run list --status=failure
+```
+
+##### Re-run Workflows
+```bash
+# Re-run a specific workflow run
+gh run rerun <run-id>
+
+# Re-run failed jobs only
+gh run rerun <run-id> --failed
+```
 
 ### 5. Monitoring & Observability
 - Access Grafana: http://<instance-ip>:30300 (admin/admin)

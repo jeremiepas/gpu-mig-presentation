@@ -29,7 +29,7 @@ resource "scaleway_instance_ip" "example" {
 }
 
 resource "scaleway_instance_server" "example" {
-  type  = "L4-2G-24G"
+  type  = "H100-1-80G"
   image = "ubuntu_jammy"
   ip_id = scaleway_instance_ip.example.id
 }
