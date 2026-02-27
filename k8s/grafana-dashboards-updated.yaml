@@ -1,0 +1,729 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: monitoring
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      updateIntervalSeconds: 10
+      allowUiUpdates: true
+      options:
+        path: /etc/grafana/provisioning/dashboards
+  k8s-cluster.json: |
+    {
+      "title": "Moshi Inference - Container Metrics",
+      "uid": "k8s-cluster",
+      "version": 2,
+      "refresh": "5s",
+      "timezone": "browser",
+      "time": { "from": "now-15m", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "CPU Usage (cores)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "rate(container_cpu_usage_seconds_total{namespace=\"moshi-demo\", pod=~\"moshi-.*\"}[5m])",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "cores",
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 2 },
+                  { "color": "red", "value": 4 }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "title": "Memory Usage (bytes)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "targets": [
+            {
+              "expr": "container_memory_usage_bytes{namespace=\"moshi-demo\", pod=~\"moshi-.*\"}",
+              "legendFormat": "{{pod}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 536870912 },
+                  { "color": "red", "value": 1073741824 }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 3,
+          "title": "Running Pods",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+          "targets": [
+            {
+              "expr": "count(container_last_seen{namespace=\"moshi-demo\", pod=~\"moshi-.*\"})",
+              "legendFormat": "Pods",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "GPU Node",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+          "targets": [
+            {
+              "expr": "count(node_cpu_info{nixos_nvidia_cdi=\"enabled\"})",
+              "legendFormat": "montech",
+              "refId": "A"
+            }
+          ]
+        }
+      ]
+    }
+  scaleway-dashboard.json: |
+    {
+      "title": "Scaleway Infrastructure - Resource Monitoring",
+      "uid": "scaleway-resources",
+      "version": 1,
+      "refresh": "30s",
+      "timezone": "browser",
+      "panels": [
+        {
+          "id": 1,
+          "title": "Instance Information",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "1",
+              "legendFormat": "Instance Type",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "DEV1-S"
+                    }
+                  }
+                }
+              ],
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "steps": [
+                  {
+                    "value": 0,
+                    "color": "green"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 2,
+          "title": "CPU Cores",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "targets": [
+            {
+              "expr": "count(node_cpu_seconds_total{mode='idle'})",
+              "legendFormat": "Cores",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "CPU Usage %",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 4
+          },
+          "targets": [
+            {
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode='idle'}[5m])) * 100)",
+              "legendFormat": "CPU Usage %",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "value": 0,
+                    "color": "green"
+                  },
+                  {
+                    "value": 70,
+                    "color": "yellow"
+                  },
+                  {
+                    "value": 90,
+                    "color": "red"
+                  }
+                ]
+              },
+              "custom": {
+                "lineWidth": 2
+              }
+            }
+          }
+        },
+        {
+          "id": 4,
+          "title": "Memory Usage",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 4
+          },
+          "targets": [
+            {
+              "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+              "legendFormat": "Used",
+              "refId": "A"
+            },
+            {
+              "expr": "node_memory_MemAvailable_bytes",
+              "legendFormat": "Available",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "thresholds": {
+                "steps": [
+                  {
+                    "value": 0,
+                    "color": "green"
+                  },
+                  {
+                    "value": 80,
+                    "color": "yellow"
+                  },
+                  {
+                    "value": 95,
+                    "color": "red"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 5,
+          "title": "Memory Usage %",
+          "type": "gauge",
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 12
+          },
+          "targets": [
+            {
+              "expr": "(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100",
+              "legendFormat": "Memory %",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "value": 0,
+                    "color": "green"
+                  },
+                  {
+                    "value": 70,
+                    "color": "yellow"
+                  },
+                  {
+                    "value": 90,
+                    "color": "red"
+                  }
+                ]
+              },
+              "max": 100,
+              "min": 0
+            }
+          }
+        },
+        {
+          "id": 6,
+          "title": "Disk Usage",
+          "type": "gauge",
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 6,
+            "y": 12
+          },
+          "targets": [
+            {
+              "expr": "(node_filesystem_size_bytes{mountpoint='/'} - node_filesystem_avail_bytes{mountpoint='/'}) / node_filesystem_size_bytes{mountpoint='/'} * 100",
+              "legendFormat": "Disk %",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "value": 0,
+                    "color": "green"
+                  },
+                  {
+                    "value": 70,
+                    "color": "yellow"
+                  },
+                  {
+                    "value": 90,
+                    "color": "red"
+                  }
+                ]
+              },
+              "max": 100,
+              "min": 0
+            }
+          }
+        },
+        {
+          "id": 7,
+          "title": "Network Traffic",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 12
+          },
+          "targets": [
+            {
+              "expr": "rate(node_network_receive_bytes_total{device!='lo'}[5m])",
+              "legendFormat": "RX {{device}}",
+              "refId": "A"
+            },
+            {
+              "expr": "rate(node_network_transmit_bytes_total{device!='lo'}[5m])",
+              "legendFormat": "TX {{device}}",
+              "refId": "B"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes/s"
+            }
+          }
+        },
+        {
+          "id": 8,
+          "title": "GPU Utilization",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 20
+          },
+          "targets": [
+            {
+              "expr": "rate(nvidia_dcgm_exporter_gpu_utilization_seconds_total[5m]) * 100",
+              "legendFormat": "GPU {{gpu}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "value": 0,
+                    "color": "green"
+                  },
+                  {
+                    "value": 50,
+                    "color": "yellow"
+                  },
+                  {
+                    "value": 90,
+                    "color": "red"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 9,
+          "title": "GPU Memory Usage",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 20
+          },
+          "targets": [
+            {
+              "expr": "nvidia_dcgm_exporter_gpu_memory_used_bytes / nvidia_dcgm_exporter_gpu_memory_total_bytes * 100",
+              "legendFormat": "GPU {{gpu}}",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "thresholds": {
+                "steps": [
+                  {
+                    "value": 0,
+                    "color": "green"
+                  },
+                  {
+                    "value": 80,
+                    "color": "yellow"
+                  },
+                  {
+                    "value": 95,
+                    "color": "red"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 10,
+          "title": "Estimated Cost (DEV1-S)",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 28
+          },
+          "targets": [
+            {
+              "expr": "0.0044",
+              "legendFormat": "\u20ac/hour",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currency EUR",
+              "thresholds": {
+                "steps": [
+                  {
+                    "value": 0,
+                    "color": "green"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 11,
+          "title": "Estimated Monthly Cost",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 28
+          },
+          "targets": [
+            {
+              "expr": "0.0044 * 24 * 30",
+              "legendFormat": "\u20ac/month",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "currency EUR",
+              "thresholds": {
+                "steps": [
+                  {
+                    "value": 0,
+                    "color": "green"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": 12,
+          "title": "Instance Uptime",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 28
+          },
+          "targets": [
+            {
+              "expr": "time() - node_time_seconds",
+              "legendFormat": "Uptime",
+              "refId": "A"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s",
+              "thresholds": {
+                "steps": [
+                  {
+                    "value": 0,
+                    "color": "green"
+                  }
+                ]
+              },
+              "decimals": 0
+            }
+          }
+        },
+        {
+          "id": 13,
+          "title": "Load Average",
+          "type": "graph",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 32
+          },
+          "targets": [
+            {
+              "expr": "node_load1",
+              "legendFormat": "1m",
+              "refId": "A"
+            },
+            {
+              "expr": "node_load5",
+              "legendFormat": "5m",
+              "refId": "B"
+            },
+            {
+              "expr": "node_load15",
+              "legendFormat": "15m",
+              "refId": "C"
+            }
+          ]
+        }
+      ],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timepicker": {}
+    }
+  billing-dashboard.json: |
+    {
+      "title": "Scaleway Billing Dashboard",
+      "uid": "scaleway-billing",
+      "version": 1,
+      "refresh": "5m",
+      "timezone": "browser",
+      "time": { "from": "now-30d", "to": "now" },
+      "panels": [
+          {
+            "id": 1,
+            "title": "Total Monthly Cost",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+            "targets": [
+              {
+                "expr": "scaleway_monthly_cost_total",
+                "legendFormat": "Total EUR",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "currency EUR",
+                "thresholds": {
+                  "steps": [
+                    { "value": 0, "color": "green" },
+                    { "value": 100, "color": "yellow" },
+                    { "value": 500, "color": "red" }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 2,
+            "title": "L4 Hourly Cost",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+            "targets": [
+              {
+                "expr": "scaleway_l4_hourly_cost",
+                "legendFormat": "€/hour",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "currency EUR",
+                "thresholds": {
+                  "steps": [
+                    { "value": 0, "color": "green" }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 3,
+            "title": "Daily Cost Projection",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+            "targets": [
+              {
+                "expr": "scaleway_daily_cost_projection",
+                "legendFormat": "€/day",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "currency EUR",
+                "thresholds": {
+                  "steps": [
+                    { "value": 0, "color": "green" },
+                    { "value": 20, "color": "yellow" },
+                    { "value": 50, "color": "red" }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 4,
+            "title": "Monthly Cost Projection",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+            "targets": [
+              {
+                "expr": "scaleway_monthly_cost_projection",
+                "legendFormat": "€/month",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "currency EUR",
+                "thresholds": {
+                  "steps": [
+                    { "value": 0, "color": "green" },
+                    { "value": 500, "color": "yellow" },
+                    { "value": 1000, "color": "red" }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 5,
+            "title": "L4 Minutes Used",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+            "targets": [
+              {
+                "expr": "scaleway_l4_minutes_used",
+                "legendFormat": "Minutes",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "m"
+              }
+            }
+          },
+          {
+            "id": 6,
+            "title": "Instance Type",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 12, "x": 12, "y": 4 },
+            "targets": [
+              {
+                "expr": "scaleway_instance_type",
+                "legendFormat": "{{type}}",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "none"
+              }
+            }
+          }
+        ],
+        "templating": {
+          "list": []
+        },
+        "timepicker": {}
+    }
