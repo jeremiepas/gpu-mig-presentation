@@ -27,9 +27,10 @@ spec:
         app: moshi-download
     spec:
       restartPolicy: OnFailure
+      runtimeClassName: nvidia
       containers:
         - name: download
-          image: alpine/aria2:latest
+          image: curlimages/curl:latest
           command: ["/bin/sh", "/scripts/download-models.sh"]
           volumeMounts:
             - name: models
@@ -38,7 +39,7 @@ spec:
               mountPath: /scripts
           resources:
             limits:
-              nvidia.com/gpu: 1
+              nvidia.com/gpu-all: 1
       volumes:
         - name: models
           emptyDir: {}

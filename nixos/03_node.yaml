@@ -1,0 +1,6 @@
+kind: Node
+apiVersion: v1
+metadata:
+    name: montech #CHANGEME by node name
+    labels:
+        nixos-nvidia-cdi: enabled

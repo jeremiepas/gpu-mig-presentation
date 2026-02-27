@@ -24,6 +24,7 @@ metadata:
     app: moshi
 spec:
   restartPolicy: Always
+  runtimeClassName: nvidia
   containers:
     - name: moshi
       image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
@@ -36,7 +37,7 @@ spec:
           mountPath: /scripts
       resources:
         limits:
-          nvidia.com/gpu: "1"
+          nvidia.com/gpu-all: "1"
   volumes:
     - name: scripts
       configMap:
@@ -53,6 +54,7 @@ metadata:
     app: moshi
 spec:
   restartPolicy: Always
+  runtimeClassName: nvidia
   containers:
     - name: moshi
       image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
@@ -65,7 +67,7 @@ spec:
           mountPath: /scripts
       resources:
         limits:
-          nvidia.com/gpu: "1"
+          nvidia.com/gpu-all: "1"
   volumes:
     - name: scripts
       configMap:
@@ -82,6 +84,7 @@ metadata:
     app: moshi
 spec:
   restartPolicy: Always
+  runtimeClassName: nvidia
   containers:
     - name: moshi
       image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
@@ -94,7 +97,7 @@ spec:
           mountPath: /scripts
       resources:
         limits:
-          nvidia.com/gpu: "1"
+          nvidia.com/gpu-all: "1"
   volumes:
     - name: scripts
       configMap:

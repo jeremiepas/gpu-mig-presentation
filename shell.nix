@@ -12,5 +12,6 @@ pkgs.mkShell {
     python313Packages.pyyaml
     act
     packer
+    bun
   ];
 }

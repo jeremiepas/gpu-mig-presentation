@@ -31,11 +31,11 @@ terraform -chdir=terraform/environments/dev destroy
 # Get instance IP
 terraform -chdir=terraform/environments/dev output instance_ip
 
-# SSH to instance (uses ssh_key file)
-ssh -i ssh_key ubuntu@<INSTANCE_IP>
+# SSH to instance (uses ~/.ssh/id_rsa)
+ssh -i ~/.ssh/id_rsa ubuntu@<INSTANCE_IP>
 
 # Get kubeconfig from remote
-ssh -i ssh_key ubuntu@<INSTANCE_IP> "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
+ssh -i ~/.ssh/id_rsa ubuntu@<INSTANCE_IP> "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
 sed -i 's|127.0.0.1|<INSTANCE_IP>|g' ~/.kube/config
 
 # Deploy K8s manifests
