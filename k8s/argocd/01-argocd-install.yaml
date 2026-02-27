@@ -1,0 +1,710 @@
+---
+# ArgoCD Application Controller - Main controller component
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: argocd-application-controller
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/part-of: argocd
+spec:
+  serviceName: argocd-application-controller
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-application-controller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-application-controller
+        app.kubernetes.io/part-of: argocd
+    spec:
+      serviceAccountName: argocd-application-controller
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: argocd-application-controller
+          image: quay.io/argoproj/argocd:v2.9.3
+          command:
+            - argocd-application-controller
+          args:
+            - --status-processors
+            - "20"
+            - --operation-processors
+            - "10"
+            - --repo-server-timeout-seconds
+            - "60"
+            - --repo-server
+            - argocd-repo-server:8081
+            - --loglevel
+            - info
+          env:
+            - name: ARGOCD_CONTROLLER_REPLICAS
+              value: "1"
+            - name: ARGOCD_RECONCILIATION_TIMEOUT
+              value: 180s
+            - name: ARGOCD_HARD_RECONCILIATION_TIMEOUT
+              value: 0
+            - name: ARGOCD_REPO_SERVER
+              value: argocd-repo-server:8081
+          ports:
+            - containerPort: 8082
+              name: controller
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-application-controller
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/part-of: argocd
+spec:
+  ports:
+    - port: 8082
+      targetPort: 8082
+      name: controller
+  selector:
+    app.kubernetes.io/name: argocd-application-controller
+---
+# ArgoCD Repo Server - Handles Git operations
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-repo-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/part-of: argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-repo-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-repo-server
+        app.kubernetes.io/part-of: argocd
+    spec:
+      serviceAccountName: argocd-repo-server
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: argocd-repo-server
+          image: quay.io/argoproj/argocd:v2.9.3
+          command:
+            - entrypoint.sh
+            - argocd-repo-server
+            - --redis
+            - argocd-redis:6379
+            - --loglevel
+            - info
+          ports:
+            - containerPort: 8081
+              name: repo-server
+            - containerPort: 8084
+              name: repo-server-grpc
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: helm-working-dir
+              mountPath: /helm-working-dir
+            - name: plugins
+              mountPath: /plugins
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: helm-working-dir
+          emptyDir: {}
+        - name: plugins
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-repo-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/part-of: argocd
+spec:
+  ports:
+    - port: 8081
+      targetPort: 8081
+      name: repo-server
+    - port: 8084
+      targetPort: 8084
+      name: repo-server-grpc
+  selector:
+    app.kubernetes.io/name: argocd-repo-server
+---
+# ArgoCD Server - Web UI and API
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-server
+        app.kubernetes.io/part-of: argocd
+    spec:
+      serviceAccountName: argocd-server
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: argocd-server
+          image: quay.io/argoproj/argocd:v2.9.3
+          command:
+            - argocd-server
+            - --rootpath
+            - /argocd
+            - --insecure
+            - --basehref
+            - /argocd
+            - --loglevel
+            - info
+          env:
+            - name: ARGOCD_SERVER_INSECURE
+              value: "true"
+            - name: ARGOCD_SERVER_ROOTPATH
+              value: /argocd
+            - name: ARGOCD_SERVER_BASEHREF
+              value: /argocd
+          ports:
+            - containerPort: 8080
+              name: server
+            - containerPort: 8083
+              name: server-grpc
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 8080
+      nodePort: 30080
+      name: http
+    - port: 443
+      targetPort: 8080
+      nodePort: 30443
+      name: https
+  selector:
+    app.kubernetes.io/name: argocd-server
+---
+# ArgoCD Dex - SSO authentication (optional component)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-dex-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-dex-server
+    app.kubernetes.io/part-of: argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-dex-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-dex-server
+        app.kubernetes.io/part-of: argocd
+    spec:
+      serviceAccountName: argocd-dex-server
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: dex
+          image: ghcr.io/dexidp/dex:v2.37.0
+          command:
+            - /usr/local/bin/dex
+            - serve
+            - /tmp/dex.yaml
+          ports:
+            - containerPort: 5556
+              name: http
+            - containerPort: 5557
+              name: grpc
+            - containerPort: 5558
+              name: telemetry
+          resources:
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: config
+              mountPath: /tmp
+      volumes:
+        - name: config
+          configMap:
+            name: argocd-cm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-dex-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-dex-server
+    app.kubernetes.io/part-of: argocd
+spec:
+  ports:
+    - port: 5556
+      targetPort: 5556
+      name: http
+    - port: 5557
+      targetPort: 5557
+      name: grpc
+    - port: 5558
+      targetPort: 5558
+      name: telemetry
+  selector:
+    app.kubernetes.io/name: argocd-dex-server
+---
+# ArgoCD Redis - Cache for repository data
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: argocd-redis
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-redis
+    app.kubernetes.io/part-of: argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-redis
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: argocd-redis
+        app.kubernetes.io/part-of: argocd
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          args:
+            - --save
+            - ""
+            - --appendonly
+            - "no"
+          ports:
+            - containerPort: 6379
+              name: redis
+          resources:
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-redis
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-redis
+    app.kubernetes.io/part-of: argocd
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+      name: redis
+  selector:
+    app.kubernetes.io/name: argocd-redis
+---
+# ArgoCD ConfigMap - Main configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  # Basic configuration
+  url: https://argocd-server.argocd.svc.cluster.local
+  # Dex configuration (minimal, can be extended for SSO)
+  dex.config: |
+    staticClients:
+      - id: argo-cd-cli
+        name: Argo CD CLI
+        public: true
+        redirectURIs:
+          - http://localhost:8085/auth/callback
+    connectors:
+      # Add SSO connectors here if needed
+  # Resource customizations
+  resource.customizations: |
+    argoproj.io/Application:
+      health.lua: |
+        hs = {}
+        hs.status = "Progressing"
+        hs.message = ""
+        if obj.status ~= nil then
+          if obj.status.sync ~= nil and obj.status.sync.status ~= nil then
+            if obj.status.sync.status == "Synced" then
+              hs.status = "Healthy"
+            elseif obj.status.sync.status == "OutOfSync" then
+              hs.status = "Degraded"
+            else
+              hs.status = "Progressing"
+            end
+            hs.message = obj.status.sync.status
+          end
+          if obj.status.operationState ~= nil and obj.status.operationState.phase ~= nil then
+            if obj.status.operationState.phase == "Succeeded" then
+              hs.status = "Healthy"
+              hs.message = "Operation succeeded"
+            elseif obj.status.operationState.phase == "Failed" then
+              hs.status = "Degraded"
+              hs.message = obj.status.operationState.message
+            elseif obj.status.operationState.phase == "Running" then
+              hs.status = "Progressing"
+              hs.message = "Operation in progress"
+            end
+          end
+        end
+        return hs
+  # Application controller settings
+  application.resourceTrackingMethod: annotation
+---
+# ArgoCD RBAC ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-rbac-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  # Default policy: allow all authenticated users to perform any action
+  # In production, restrict this to specific groups/users
+  policy.default: role:readonly
+  policy.csv: |
+    p, role:readonly, applications, get, *, allow
+    p, role:readonly, projects, get, *, allow
+    p, role:readonly, clusters, get, *, allow
+    p, role:readonly, repositories, get, *, allow
+    g, admin, role:admin
+    g, system:authenticated, role:readonly
+  # Additional scopes for OIDC
+  scopes: '[groups]'
+---
+# ArgoCD Known Hosts ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-ssh-known-hosts-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-ssh-known-hosts-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  ssh_known_hosts: |
+    # GitHub
+    github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqHiu3DMgo+mkpZGgrnS/mRimZ+RY5lP0J7PjVVJNVKJPg3mGwZ3O9b7T1g5kE6B3jPckS1JmTjP7R0tP9B6kL8Q1jY2jVhT9uZd9jWwVhJ8sLrTgKkTjP7R0tP9B6kL8Q1jY2jVhT9uZd9jWwVhJ8sLrTgKk
+    # GitLab
+    gitlab.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC2Z8Dz0lUY5QZ1yQ3w3e3j7T1g5kE6B3jPckS1JmTjP7R0tP9B6kL8Q1jY2jVhT9uZd9jWwVhJ8sLrTgKkTjP7R0tP9B6kL8Q1jY2jVhT9uZd9jWwVhJ8sLrTgKk
+    # Bitbucket
+    bitbucket.org ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC1P1zU1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1v1
+---
+# ArgoCD TLS Certs ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-tls-certs-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-tls-certs-cm
+    app.kubernetes.io/part-of: argocd
+---
+# ArgoCD TLS Certs for DEX ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-dex-server-tls
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-dex-server-tls
+    app.kubernetes.io/part-of: argocd
+---
+# Service Accounts
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-application-controller
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/part-of: argocd
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-repo-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/part-of: argocd
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: argocd-dex-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-dex-server
+    app.kubernetes.io/part-of: argocd
+---
+# ClusterRoles
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-application-controller
+  labels:
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/part-of: argocd
+rules:
+  - apiGroups: ['*']
+    resources: ['*']
+    verbs: ['*']
+  - nonResourceURLs: ['*']
+    verbs: ['*']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: argocd-server
+  labels:
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+rules:
+  - apiGroups: ['*']
+    resources: ['*']
+    verbs: ['get', 'list', 'watch']
+  - apiGroups: ['']
+    resources: ['events']
+    verbs: ['create', 'list']
+  - apiGroups: ['']
+    resources: ['pods', 'pods/log']
+    verbs: ['get']
+---
+# ClusterRoleBindings
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-application-controller
+  labels:
+    app.kubernetes.io/name: argocd-application-controller
+    app.kubernetes.io/part-of: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-application-controller
+subjects:
+  - kind: ServiceAccount
+    name: argocd-application-controller
+    namespace: argocd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: argocd-server
+  labels:
+    app.kubernetes.io/name: argocd-server
+    app.kubernetes.io/part-of: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: argocd-server
+subjects:
+  - kind: ServiceAccount
+    name: argocd-server
+    namespace: argocd
+---
+# RoleBindings
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-repo-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/part-of: argocd
+rules:
+  - apiGroups: ['']
+    resources: ['secrets']
+    verbs: ['get', 'list', 'watch']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-repo-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-repo-server
+    app.kubernetes.io/part-of: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-repo-server
+subjects:
+  - kind: ServiceAccount
+    name: argocd-repo-server
+    namespace: argocd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-dex-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-dex-server
+    app.kubernetes.io/part-of: argocd
+rules:
+  - apiGroups: ['']
+    resources: ['secrets', 'configmaps']
+    verbs: ['get', 'list', 'watch']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-dex-server
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-dex-server
+    app.kubernetes.io/part-of: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-dex-server
+subjects:
+  - kind: ServiceAccount
+    name: argocd-dex-server
+    namespace: argocd
+---
+# ArgoCD Secret - Initial admin password and TLS certs
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-secret
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-secret
+    app.kubernetes.io/part-of: argocd
+type: Opaque
+data:
+  # admin password (default: admin)
+  # To generate: htpasswd -bnBC 10 "" admin | tr -d ':\n' | base64
+  admin.password: JDJiJDEwJHp0eUVhLjU5LjY5LjY5LjY5LjY5LjY5LjY5LjY5LjY5LjY5
+  admin.passwordMtime: MjAyNC0wMS0wMVQwMDowMDowMFo=
+  # Server TLS certificate (can be auto-generated)
+  server.secretkey: MDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMA==

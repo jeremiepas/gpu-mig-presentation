@@ -1,0 +1,92 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: moshi-helm
+  namespace: argocd
+  labels:
+    app: moshi
+    managed-by: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeremiepas/moshi
+    targetRevision: main
+    path: helm/moshi
+    helm:
+      valueFiles:
+        - values.yaml
+      values: |
+        image:
+          registry: ghcr.io
+          repository: jeremiepas/moshi
+          tag: latest
+          pullPolicy: IfNotPresent
+        model:
+          hfRepo: kyutai/moshiko-pytorch-bf16
+          storageClass: longhorn
+          size: 50Gi
+          cacheDir: /models
+        backend:
+          enabled: true
+          replicas: 1
+          gpu:
+            enabled: true
+            count: 1
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+              memory: 16Gi
+              cpu: "4"
+            requests:
+              memory: 8Gi
+              cpu: "2"
+          env:
+            - name: HF_HOME
+              value: /models/cache
+            - name: TRANSFORMERS_CACHE
+              value: /models/cache
+        webui:
+          enabled: true
+          replicas: 1
+          service:
+            type: ClusterIP
+            port: 8080
+          ingress:
+            enabled: true
+            className: nginx
+            host: moshi.montech.tail21c10a.ts.net
+            path: /
+            pathType: Prefix
+            annotations:
+              nginx.ingress.kubernetes.io/ssl-redirect: "true"
+              nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+              nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+              nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+        persistence:
+          enabled: true
+          storageClass: longhorn
+          accessMode: ReadWriteOnce
+          size: 50Gi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: moshi
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=false
+      - PruneLast=true
+      - PrunePropagationPolicy=foreground
+      - Retry=false
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 10

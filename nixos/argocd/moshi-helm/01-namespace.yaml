@@ -1,0 +1,22 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: moshi
+  labels:
+    app: moshi
+    kubernetes.io/metadata.name: moshi
+    gpu: nvidia
+  annotations:
+    field.cattle.io/publicEndpoints: "null"
+    scheduler.alpha.kubernetes.io/defaultTolerations: '[{"operator":"Exists","effect":"NoSchedule","key":"nvidia.com/gpu"}]'
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: moshi-quota
+  namespace: moshi
+spec:
+  hard:
+    requests.nvidia.com/gpu: "1"
+    limits.nvidia.com/gpu: "1"

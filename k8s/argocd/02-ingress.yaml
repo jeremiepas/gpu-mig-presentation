@@ -1,0 +1,114 @@
+---
+# ArgoCD Ingress - Route /argocd path to ArgoCD server
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-server-ingress
+    app.kubernetes.io/part-of: argocd
+  annotations:
+    # Traefik annotations
+    traefik.ingress.kubernetes.io/router.entrypoints: web, websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.pathprefix.strip: "/argocd"
+    # nginx-ingress annotations
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    # CORS
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /argocd
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80
+          - path: /argocd/
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80
+---
+# Alternative Traefik IngressRoute for Traefik users
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-traefik-route
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-traefik-route
+    app.kubernetes.io/part-of: argocd
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: PathPrefix(`/argocd`)
+      kind: Rule
+      services:
+        - name: argocd-server
+          port: 80
+      middlewares:
+        - name: argocd-strip-prefix
+          namespace: argocd
+  tls:
+    {}
+---
+# Traefik Middleware for stripping /argocd prefix
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: argocd-strip-prefix
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-strip-prefix
+    app.kubernetes.io/part-of: argocd
+spec:
+  stripPrefix:
+    prefixes:
+      - /argocd
+---
+# Basic auth middleware for additional security (optional)
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: argocd-basic-auth
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-basic-auth
+    app.kubernetes.io/part-of: argocd
+spec:
+  basicAuth:
+    secret: argocd-basic-auth
+---
+# Secret for basic auth (optional - generate with htpasswd)
+# kubectl create secret generic argocd-basic-auth --from-literal=users="admin:$(htpasswd -bn admin password | base64)"
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-basic-auth
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-basic-auth
+    app.kubernetes.io/part-of: argocd
+type: Opaque
+data:
+  users: |
+    YWRtaW46JGFwcjEkSDY1dnFkRDAkR2hZNUJ4Y0JNdC5zV0IvMFFQLlhRLi8K

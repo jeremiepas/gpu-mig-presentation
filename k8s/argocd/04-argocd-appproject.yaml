@@ -1,0 +1,235 @@
+---
+# Default Project - Basic applications
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: default
+    app.kubernetes.io/part-of: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Default project for basic applications
+  sourceRepos:
+    - '*'
+  destinations:
+    - namespace: '*'
+      server: https://kubernetes.default.svc
+    - namespace: '*'
+      server: '*'
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  orphanedResources:
+    warn: true
+  roles:
+    - name: readonly
+      description: Read-only access to applications
+      policies:
+        - p, proj:default:readonly, applications, get, default/*, allow
+      groups:
+        - system:authenticated
+---
+# GPU Demo Project - GPU workloads and configurations
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: gpu-demo
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: gpu-demo
+    app.kubernetes.io/part-of: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: GPU MIG vs Time Slicing demo workloads
+  sourceRepos:
+    - 'https://github.com/jeremie-lesage/gentle-circuit.git'
+  destinations:
+    - namespace: gpu-operator
+      server: https://kubernetes.default.svc
+    - namespace: moshi-demo
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: 'apps'
+      kind: DaemonSet
+    - group: 'apps'
+      kind: Deployment
+    - group: 'apps'
+      kind: StatefulSet
+    - group: 'apps'
+      kind: ReplicaSet
+    - group: 'batch'
+      kind: Job
+    - group: 'batch'
+      kind: CronJob
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRole
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRoleBinding
+  namespaceResourceWhitelist:
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: Secret
+    - group: ''
+      kind: ServiceAccount
+    - group: 'apps'
+      kind: Deployment
+    - group: 'apps'
+      kind: StatefulSet
+    - group: 'apps'
+      kind: DaemonSet
+    - group: 'apps'
+      kind: ReplicaSet
+    - group: 'batch'
+      kind: Job
+    - group: 'batch'
+      kind: CronJob
+    - group: 'rbac.authorization.k8s.io'
+      kind: Role
+    - group: 'rbac.authorization.k8s.io'
+      kind: RoleBinding
+    - group: 'autoscaling'
+      kind: HorizontalPodAutoscaler
+    - group: 'policy'
+      kind: PodDisruptionBudget
+  orphanedResources:
+    warn: true
+  roles:
+    - name: admin
+      description: Admin access to GPU demo project
+      policies:
+        - p, proj:gpu-demo:admin, applications, *, gpu-demo/*, allow
+        - p, proj:gpu-demo:admin, exec, create, gpu-demo/*, allow
+      groups:
+        - admin
+    - name: readonly
+      description: Read-only access to GPU demo project
+      policies:
+        - p, proj:gpu-demo:readonly, applications, get, gpu-demo/*, allow
+      groups:
+        - system:authenticated
+---
+# Monitoring Project - Prometheus, Grafana, and observability
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: monitoring
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: monitoring
+    app.kubernetes.io/part-of: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Monitoring stack including Prometheus, Grafana, and billing exporters
+  sourceRepos:
+    - 'https://github.com/jeremie-lesage/gentle-circuit.git'
+  destinations:
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRole
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRoleBinding
+  namespaceResourceWhitelist:
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: Secret
+    - group: ''
+      kind: ServiceAccount
+    - group: ''
+      kind: PersistentVolumeClaim
+    - group: ''
+      kind: Endpoints
+    - group: ''
+      kind: Pod
+    - group: 'apps'
+      kind: Deployment
+    - group: 'apps'
+      kind: StatefulSet
+    - group: 'apps'
+      kind: DaemonSet
+    - group: 'apps'
+      kind: ReplicaSet
+    - group: 'batch'
+      kind: Job
+    - group: 'batch'
+      kind: CronJob
+    - group: 'rbac.authorization.k8s.io'
+      kind: Role
+    - group: 'rbac.authorization.k8s.io'
+      kind: RoleBinding
+    - group: 'networking.k8s.io'
+      kind: Ingress
+    - group: 'traefik.containo.us'
+      kind: IngressRoute
+    - group: 'traefik.containo.us'
+      kind: Middleware
+  orphanedResources:
+    warn: true
+  roles:
+    - name: admin
+      description: Admin access to monitoring project
+      policies:
+        - p, proj:monitoring:admin, applications, *, monitoring/*, allow
+        - p, proj:monitoring:admin, exec, create, monitoring/*, allow
+      groups:
+        - admin
+    - name: readonly
+      description: Read-only access to monitoring project
+      policies:
+        - p, proj:monitoring:readonly, applications, get, monitoring/*, allow
+      groups:
+        - system:authenticated
+---
+# System Project - Cluster infrastructure components
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: system
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: system
+    app.kubernetes.io/part-of: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Cluster infrastructure and system components
+  sourceRepos:
+    - 'https://github.com/jeremie-lesage/gentle-circuit.git'
+    - 'https://charts.helm.sh/stable'
+  destinations:
+    - namespace: kube-system
+      server: https://kubernetes.default.svc
+    - namespace: ingress-nginx
+      server: https://kubernetes.default.svc
+    - namespace: '*'
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  orphanedResources:
+    warn: true
+  permitOnlyProjectScopedClusters: false
+  sourceNamespaces:
+    - argocd
