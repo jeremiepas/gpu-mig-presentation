@@ -1,0 +1,290 @@
+# ArgoCD Applications Configuration
+# Defines ArgoCD Applications for managing NixOS K3s cluster workloads
+
+---
+# Application: Core Infrastructure (Namespaces, Runtime Classes)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: core-infrastructure
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: core-infrastructure
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: core
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeremie-H/gentle-circuit
+    targetRevision: main
+    path: nixos
+    directory:
+      recurse: false
+      include: "*.yaml"
+      exclude: "argocd/**"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+---
+# Application: GPU Operator
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gpu-operator
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: gpu-operator
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: gpu
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeremie-H/gentle-circuit
+    targetRevision: main
+    path: nixos
+    directory:
+      recurse: false
+      include: "{01_runtimeClass.yaml,02_demonSet_gpu.yaml,03_node.yaml,04_create_gpu_pod.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gpu-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      name: nvidia-device-plugin-config
+      jsonPointers:
+        - /data
+---
+# Application: Monitoring Stack (Prometheus + Grafana)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-stack
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: monitoring-stack
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: monitoring
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeremie-H/gentle-circuit
+    targetRevision: main
+    path: k8s
+    directory:
+      recurse: false
+      include: "{00-namespaces.yaml,03-prometheus.yaml,04-grafana.yaml,04-grafana-datasources.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: ""
+      kind: ConfigMap
+      name: grafana-dashboards
+      jsonPointers:
+        - /data
+    - group: ""
+      kind: ConfigMap
+      name: grafana-datasources
+      jsonPointers:
+        - /data
+---
+# Application: Moshi Demo Workloads
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: moshi-demo
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: moshi-demo
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: demo
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeremie-H/gentle-circuit
+    targetRevision: main
+    path: k8s
+    directory:
+      recurse: false
+      include: "{05-moshi-setup.yaml,06-moshi-timeslicing.yaml,08-moshi-vis.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: moshi-demo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: moshi-webui
+      jsonPointers:
+        - /spec/replicas
+    - group: apps
+      kind: StatefulSet
+      name: moshi-server
+      jsonPointers:
+        - /spec/replicas
+---
+# Application: Ingress Controller and Routes
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress-controller
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: ingress-controller
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: networking
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeremie-H/gentle-circuit
+    targetRevision: main
+    path: k8s
+    directory:
+      recurse: false
+      include: "{09-ingress-controller.yaml,09-main-ingress.yaml,10-simple-ingress.yaml,11-prometheus-ingress.yaml}"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ingress-nginx
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+---
+# Application: GPU Test and Validation
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gpu-test
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: gpu-test
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/component: testing
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeremie-H/gentle-circuit
+    targetRevision: main
+    path: nixos
+    directory:
+      recurse: false
+      include: "05_test_pod.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: false
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 1m
+---
+# ApplicationSet for Environment-Specific Deployments (optional)
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: moshi-environments
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: moshi-environments
+    app.kubernetes.io/part-of: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - name: timeslicing
+            path: k8s/06-moshi-timeslicing.yaml
+            namespace: moshi-demo
+          - name: mig
+            path: k8s/07-moshi-mig.yaml
+            namespace: moshi-demo
+  template:
+    metadata:
+      name: "moshi-{{name}}"
+      labels:
+        app.kubernetes.io/name: "moshi-{{name}}"
+        app.kubernetes.io/part-of: argocd
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/jeremie-H/gentle-circuit
+        targetRevision: main
+        path: "{{path}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "{{namespace}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

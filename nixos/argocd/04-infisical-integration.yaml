@@ -1,0 +1,280 @@
+# Infisical External Secrets Integration for ArgoCD
+# Enables ArgoCD to use Infisical for secret management
+# Note: This file is only applied if Infisical is available in the cluster
+
+---
+# Namespace for External Secrets Operator (if not already exists)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: external-secrets
+  labels:
+    app.kubernetes.io/name: external-secrets
+    app.kubernetes.io/part-of: argocd
+---
+# External Secrets Operator Deployment
+# This creates the operator that syncs secrets from Infisical to Kubernetes
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-secrets
+  namespace: external-secrets
+  labels:
+    app.kubernetes.io/name: external-secrets
+    app.kubernetes.io/part-of: argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: external-secrets
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: external-secrets
+        app.kubernetes.io/part-of: argocd
+    spec:
+      serviceAccountName: external-secrets
+      containers:
+        - name: external-secrets
+          image: ghcr.io/external-secrets/external-secrets:v0.9.0
+          args:
+            - --provider=infisical
+          resources:
+            limits:
+              cpu: 100m
+              memory: 256Mi
+            requests:
+              cpu: 25m
+              memory: 128Mi
+          ports:
+            - containerPort: 8080
+              name: metrics
+---
+# External Secrets Service Account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-secrets
+  namespace: external-secrets
+  labels:
+    app.kubernetes.io/name: external-secrets
+    app.kubernetes.io/part-of: argocd
+---
+# External Secrets Cluster Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: external-secrets
+  labels:
+    app.kubernetes.io/name: external-secrets
+    app.kubernetes.io/part-of: argocd
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - delete
+  - apiGroups:
+      - external-secrets.io
+    resources:
+      - "*"
+    verbs:
+      - "*"
+---
+# External Secrets Cluster Role Binding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-secrets
+  labels:
+    app.kubernetes.io/name: external-secrets
+    app.kubernetes.io/part-of: argocd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: external-secrets
+subjects:
+  - kind: ServiceAccount
+    name: external-secrets
+    namespace: external-secrets
+---
+# SecretStore: Infisical Configuration
+# Defines how to connect to Infisical
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: infisical-store
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: infisical-store
+    app.kubernetes.io/part-of: argocd
+spec:
+  provider:
+    infisical:
+      auth:
+        universalAuthCredentials:
+          clientId:
+            name: infisical-auth
+            key: client-id
+          clientSecret:
+            name: infisical-auth
+            key: client-secret
+      secretsScope:
+        projectSlug: gpu-mig-presentation
+        environmentSlug: prod
+        secretsPath: /
+        recursive: true
+---
+# ClusterSecretStore: Infisical Configuration (cluster-wide)
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterSecretStore
+metadata:
+  name: infisical-cluster-store
+  labels:
+    app.kubernetes.io/name: infisical-cluster-store
+    app.kubernetes.io/part-of: argocd
+spec:
+  provider:
+    infisical:
+      auth:
+        universalAuthCredentials:
+          clientId:
+            name: infisical-auth
+            namespace: argocd
+            key: client-id
+          clientSecret:
+            name: infisical-auth
+            namespace: argocd
+            key: client-secret
+      secretsScope:
+        projectSlug: gpu-mig-presentation
+        environmentSlug: prod
+        secretsPath: /
+        recursive: true
+---
+# Secret: Infisical Authentication Credentials
+# This should be populated with actual Infisical credentials
+# Never commit this secret to git - populate via kubectl or vault
+apiVersion: v1
+kind: Secret
+metadata:
+  name: infisical-auth
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: infisical-auth
+    app.kubernetes.io/part-of: argocd
+type: Opaque
+stringData:
+  # Replace with actual Infisical Universal Auth credentials
+  # Generate in Infisical: https://app.infisical.com > Project Settings > Machine Identity
+  client-id: "REPLACE_WITH_INFISICAL_CLIENT_ID"
+  client-secret: "REPLACE_WITH_INFISICAL_CLIENT_SECRET"
+---
+# ExternalSecret: Sync Scaleway Credentials from Infisical
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: scaleway-credentials
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: scaleway-credentials
+    app.kubernetes.io/part-of: argocd
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: SecretStore
+    name: infisical-store
+  target:
+    name: scaleway-credentials
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: access-key
+      remoteRef:
+        key: SCW_ACCESS_KEY
+        property: value
+    - secretKey: secret-key
+      remoteRef:
+        key: SCW_SECRET_KEY
+        property: value
+    - secretKey: project-id
+      remoteRef:
+        key: SCW_PROJECT_ID
+        property: value
+---
+# ExternalSecret: Sync Grafana Admin Password from Infisical
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: grafana-admin-secret
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: grafana-admin-secret
+    app.kubernetes.io/part-of: argocd
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: infisical-cluster-store
+  target:
+    name: grafana-admin-credentials
+    creationPolicy: Owner
+    deletionPolicy: Retain
+  data:
+    - secretKey: admin-password
+      remoteRef:
+        key: GRAFANA_ADMIN_PASSWORD
+        property: value
+    - secretKey: admin-user
+      remoteRef:
+        key: GRAFANA_ADMIN_USER
+        property: value
+---
+# ExternalSecret: Sync ArgoCD Admin Password from Infisical
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: argocd-admin-secret
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-admin-secret
+    app.kubernetes.io/part-of: argocd
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: SecretStore
+    name: infisical-store
+  target:
+    name: argocd-secret
+    creationPolicy: Merge
+    deletionPolicy: Retain
+  data:
+    - secretKey: admin.password
+      remoteRef:
+        key: ARGOCD_ADMIN_PASSWORD
+        property: value
+---
+# ConfigMap: ArgoCD Configuration for Infisical
+# Enables ArgoCD to use External Secrets for secret management
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-infisical-config
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-infisical-config
+    app.kubernetes.io/part-of: argocd
+data:
+  # Configuration for Infisical integration
+  INFISICAL_API_URL: "https://app.infisical.com"
+  INFISICAL_PROJECT_SLUG: "gpu-mig-presentation"
+  # Enable external secrets in ArgoCD
+  ARGOCD_APPLICATION_CONTROLLER_REPO_SERVER: "argocd-repo-server:8081"
+  ARGOCD_APPLICATION_CONTROLLER_STATUS_PROCESSORS: "20"
+  ARGOCD_APPLICATION_CONTROLLER_OPERATION_PROCESSORS: "10"

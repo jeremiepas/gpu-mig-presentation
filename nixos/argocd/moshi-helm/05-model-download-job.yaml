@@ -1,0 +1,131 @@
+---
+# Model Download Job
+# 
+# This job downloads the Moshi model from HuggingFace before the backend starts.
+# Can be used as:
+#   1. A standalone job run manually before deploying the app
+#   2. Reference for init containers in the main deployment
+#   3. A PreSync hook for ArgoCD (requires annotation)
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: moshi-model-download
+  namespace: moshi
+  labels:
+    app: moshi
+    component: model-download
+  annotations:
+    # Uncomment to use as ArgoCD PreSync hook
+    # argocd.argoproj.io/hook: PreSync
+    # argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    description: "Downloads Moshi model from HuggingFace to shared PVC"
+spec:
+  template:
+    metadata:
+      labels:
+        app: moshi
+        component: model-download
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: default
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: model-downloader
+          image: ghcr.io/jeremiepas/moshi:latest
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -e
+              echo "Starting model download..."
+              
+              # Check for HF_TOKEN
+              if [ -z "$HF_TOKEN" ]; then
+                echo "ERROR: HF_TOKEN environment variable is not set"
+                echo "Please ensure the moshi-hf-token secret exists"
+                exit 1
+              fi
+              
+              # Create model directory
+              mkdir -p /models/cache
+              mkdir -p /models/moshiko
+              
+              echo "Downloading model from kyutai/moshiko-pytorch-bf16..."
+              
+              # Download using huggingface-cli
+              huggingface-cli download \
+                kyutai/moshiko-pytorch-bf16 \
+                --local-dir /models/moshiko \
+                --cache-dir /models/cache \
+                --resume-download \
+                --local-dir-use-symlinks False
+              
+              echo "Model download complete!"
+              echo "Contents of /models:"
+              ls -la /models/
+              echo "Contents of /models/moshiko:"
+              ls -la /models/moshiko/
+              
+              # Verify model files exist
+              if [ ! -f /models/moshiko/model.pt ] && [ ! -f /models/moshiko/pytorch_model.bin ]; then
+                echo "WARNING: No model file found. Checking for alternative names..."
+                find /models -name "*.pt" -o -name "*.bin" -o -name "*.safetensors" | head -20
+              fi
+              
+              echo "Download job completed successfully!"
+          env:
+            - name: HF_HOME
+              value: /models/cache
+            - name: TRANSFORMERS_CACHE
+              value: /models/cache
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: moshi-hf-token
+                  key: HF_TOKEN
+                  optional: false
+            - name: HF_HUB_ENABLE_HF_TRANSFER
+              value: "1"
+          resources:
+            limits:
+              memory: 32Gi
+              cpu: "4"
+            requests:
+              memory: 16Gi
+              cpu: "2"
+          volumeMounts:
+            - name: model-storage
+              mountPath: /models
+      volumes:
+        - name: model-storage
+          persistentVolumeClaim:
+            claimName: moshi-model-pvc
+            readOnly: false
+      # Tolerations for GPU nodes (model download doesn't need GPU, but may run on GPU nodes)
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+---
+# PVC for model storage (if not created by Helm chart)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: moshi-model-pvc
+  namespace: moshi
+  labels:
+    app: moshi
+    component: model-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 50Gi
