@@ -8,7 +8,7 @@ Terraform + Kubernetes infrastructure for GPU MIG vs Time Slicing demos on Scale
 
 ## Environments
 
-This project supports two environments. Both use the same credentials (`source credentials.env`), the difference is only the terraform environment path.
+This project supports two environments. Local workspace uses `source credentials-local.env`, while CI/CD uses GitHub Secrets. The difference is only the terraform environment path.
 
 | Environment | Terraform Path | State Backend | Usage |
 |-------------|----------------|---------------|-------|
@@ -18,8 +18,8 @@ This project supports two environments. Both use the same credentials (`source c
 ### Dev Environment (Default)
 
 ```bash
-# Load credentials (same for both environments)
-source credentials.env
+# Load credentials
+source credentials-local.env
 
 # Terraform commands with -chdir
 # Note: No -backend=false needed - dev uses S3 backend by default
@@ -37,6 +37,7 @@ ssh -i ~/.ssh/id_rsa ubuntu@<INSTANCE_IP>
 # Get kubeconfig from remote
 ssh -i ~/.ssh/id_rsa ubuntu@<INSTANCE_IP> "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
 sed -i 's|127.0.0.1|<INSTANCE_IP>|g' ~/.kube/config
+export KUBECONFIG="$HOME/.kube/config-k3s-remote"
 
 # Deploy K8s manifests
 kubectl apply -f k8s/00-namespaces.yaml
@@ -231,7 +232,7 @@ kubectl apply -f k8s/02-mig-config.yaml          # MIG
 5. Merge to main triggers deployment
 
 **Environment Usage:**
-- **dev** (default): Use for local development, testing, and manual deployments. Run terraform commands directly with `source credentials.env`. State is stored in S3 backend
+- **dev** (default): Use for local development, testing, and manual deployments. Run terraform commands directly with `source credentials-local.env`. State is stored in S3 backend
 - **prod**: Use for production via GitHub Actions. State is stored in S3 backend. Triggered by push to `main` branch
 
 ## Project-Specific Details
@@ -250,4 +251,5 @@ kubectl apply -f k8s/02-mig-config.yaml          # MIG
   - `SCW_SECRET_KEY` - Scaleway secret key
   - `SCW_PROJECT_ID` - Scaleway project ID
   - `K3S_KUBECONFIG` - Base64-encoded kubeconfig (after first deploy)
-- Local secrets in `credentials.env` (git-ignored)
+- Local development uses `credentials-local.env` (git-ignored)
+  - This file contains Scaleway credentials for local terraform operations
