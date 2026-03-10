@@ -1,3 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector: # REQUIRED - missing in your file
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          ports:
+            - containerPort: 3000
+          volumeMounts:
+            - name: dashboards
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+      volumes:
+        - name: dashboards
+          configMap:
+            name: grafana-dashboards
+        - name: datasources
+          configMap:
+            name: grafana-datasources
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -17,334 +49,60 @@ data:
       allowUiUpdates: true
       options:
         path: /etc/grafana/provisioning/dashboards
-  # Main dashboard - GPU MIG vs Time Slicing Comparison
   k8s-cluster.json: |
     {
-      "title": "Moshi Inference - Token Throughput & Latency",
+      "title": "Moshi Inference - Container Metrics",
       "uid": "k8s-cluster",
-      "version": 1,
+      "version": 2,
       "refresh": "5s",
       "timezone": "browser",
-      "time": {
-        "from": "now-15m",
-        "to": "now"
-      },
+      "time": { "from": "now-15m", "to": "now" },
       "panels": [
         {
           "id": 1,
-          "title": "Token Generation Rate (tokens/sec)",
+          "title": "CPU Usage (cores)",
           "type": "timeseries",
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
           "targets": [
             {
-              "expr": "moshi_tokens_per_second",
-              "legendFormat": "{{pod}} - {{model}}",
-              "refId": "A"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "tokens/s",
-              "thresholds": {
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "yellow", "value": 50},
-                  {"color": "red", "value": 100}
-                ]
-              }
-            }
-          }
-        },
-        {
-          "id": 2,
-          "title": "Total Tokens Generated",
-          "type": "timeseries",
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
-          "targets": [
-            {
-              "expr": "moshi_tokens_generated_total",
-              "legendFormat": "{{pod}} - {{model}}",
-              "refId": "A"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "thresholds": {
-                "steps": [
-                  {"color": "green", "value": null}
-                ]
-              }
-            }
-          }
-        },
-        {
-          "id": 3,
-          "title": "Inference Latency (seconds)",
-          "type": "timeseries",
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
-          "targets": [
-            {
-              "expr": "rate(moshi_inference_latency_seconds_sum[5m]) / rate(moshi_inference_latency_seconds_count[5m])",
-              "legendFormat": "{{pod}} - {{model}}",
-              "refId": "A"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "s",
-              "thresholds": {
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "yellow", "value": 0.5},
-                  {"color": "red", "value": 1}
-                ]
-              }
-            }
-          }
-        },
-        {
-          "id": 4,
-          "title": "Active Requests",
-          "type": "timeseries",
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
-          "targets": [
-            {
-              "expr": "moshi_active_requests",
-              "legendFormat": "{{pod}} - {{model}}",
-              "refId": "A"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "thresholds": {
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "yellow", "value": 5},
-                  {"color": "red", "value": 10}
-                ]
-              }
-            }
-          }
-        },
-        {
-          "id": 5,
-          "title": "GPU Memory Usage (MB)",
-          "type": "timeseries",
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
-          "targets": [
-            {
-              "expr": "moshi_gpu_memory_bytes / 1024 / 1024",
-              "legendFormat": "{{pod}} - {{model}}",
-              "refId": "A"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "MB",
-              "thresholds": {
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "yellow", "value": 12000},
-                  {"color": "red", "value": 22000}
-                ]
-              }
-            }
-          }
-        },
-        {
-          "id": 6,
-          "title": "Model Load Time (seconds)",
-          "type": "gauge",
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
-          "targets": [
-            {
-              "expr": "moshi_model_load_time_seconds",
-              "legendFormat": "{{pod}} - {{model}}",
-              "refId": "A"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "s",
-              "min": 0,
-              "max": 10,
-              "thresholds": {
-                "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "yellow", "value": 3},
-                  {"color": "red", "value": 5}
-                ]
-              }
-            }
-          }
-        },
-        {
-          "id": 7,
-          "title": "Latency Histogram",
-          "type": "heatmap",
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
-          "targets": [
-            {
-              "expr": "rate(moshi_inference_latency_seconds_bucket[5m])",
-              "legendFormat": "{{le}}",
-              "refId": "A"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short"
-            }
-          }
-        },
-        {
-          "id": 8,
-          "title": "Time Slicing vs MIG Comparison",
-          "type": "stat",
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
-          "targets": [
-            {
-              "expr": "avg(moshi_tokens_per_second{mode=\"timeslicing\"})",
-              "legendFormat": "Time Slicing",
-              "refId": "A"
-            },
-            {
-              "expr": "avg(moshi_tokens_per_second{mode=\"mig\"})",
-              "legendFormat": "MIG",
-              "refId": "B"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "tokens/s",
-              "thresholds": {
-                "steps": [
-                  {"color": "green", "value": null}
-                ]
-              }
-            }
-          },
-          "options": {
-            "reduceOptions": {
-              "calcs": ["mean"],
-              "fields": "",
-              "values": false
-            },
-            "orientation": "auto",
-            "textMode": "value_and_name",
-            "graphMode": "area",
-            "colorMode": "value"
-          }
-        },
-        {
-          "id": 9,
-          "title": "Pod Status",
-          "type": "table",
-          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 32},
-          "targets": [
-            {
-              "expr": "up{job=\"moshi-inference\"}",
+              "expr": "rate(container_cpu_usage_seconds_total{namespace=\"moshi-demo\", pod=~\"moshi-.*\"}[5m])",
               "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
           "fieldConfig": {
             "defaults": {
-              "custom": {
-                "align": "auto",
-                "filterable": true
-              },
-              "mappings": [
-                {
-                  "options": {
-                    "1": {"text": "Running"},
-                    "0": {"text": "Down"}
-                  },
-                  "type": "value"
-                }
-              ],
+              "unit": "cores",
               "thresholds": {
                 "steps": [
-                  {"color": "green", "value": null},
-                  {"color": "red", "value": 0}
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 2 },
+                  { "color": "red", "value": 4 }
                 ]
               }
             }
           }
-        }
-      ],
-      "templating": {
-        "list": []
-      },
-      "time": {
-        "from": "now-15m",
-        "to": "now"
-      },
-      "timepicker": {}
-    }
-
-  application-inventory.json: |
-    {
-      "title": "Application Inventory - Links and Health Status",
-      "uid": "application-inventory",
-      "version": 1,
-      "refresh": "30s",
-      "timezone": "browser",
-      "panels": [
-        {
-          "id": 1,
-          "title": "Application Links",
-          "type": "text",
-          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 0},
-          "mode": "markdown",
-          "content": "# Application Inventory\n\n## Monitoring Tools\n- **Grafana**: [http://{{instance_ip}}:30300/grafana](http://{{instance_ip}}:30300/grafana)\n- **Prometheus**: [http://{{instance_ip}}:30090](http://{{instance_ip}}:30090)\n- **ArgoCD**: [http://{{instance_ip}}:30080](http://{{instance_ip}}:30080)\n\n## Health Status\n- **GPU Operator**: Check `kubectl get pods -n gpu-operator`\n- **Moshi Demo**: Check `kubectl get pods -n moshi-demo`\n- **Monitoring**: Check `kubectl get pods -n monitoring`\n",
-          "options": {
-            "content": "# Application Inventory\n\n## Monitoring Tools\n- **Grafana**: [http://{{instance_ip}}:30300/grafana](http://{{instance_ip}}:30300/grafana)\n- **Prometheus**: [http://{{instance_ip}}:30090](http://{{instance_ip}}:30090)\n- **ArgoCD**: [http://{{instance_ip}}:30080](http://{{instance_ip}}:30080)\n\n## Health Status\n- **GPU Operator**: Check `kubectl get pods -n gpu-operator`\n- **Moshi Demo**: Check `kubectl get pods -n moshi-demo`\n- **Monitoring**: Check `kubectl get pods -n monitoring`\n",
-            "mode": "markdown"
-          }
         },
         {
           "id": 2,
-          "title": "Application Health Status",
-          "type": "table",
-          "gridPos": {"h": 10, "w": 24, "x": 0, "y": 10},
+          "title": "Memory Usage (bytes)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
           "targets": [
             {
-              "expr": "up{job=~'kubernetes-pods|kubernetes-nodes'}",
-              "legendFormat": "{{pod}} - {{namespace}}",
+              "expr": "container_memory_usage_bytes{namespace=\"moshi-demo\", pod=~\"moshi-.*\"}",
+              "legendFormat": "{{pod}}",
               "refId": "A"
             }
           ],
           "fieldConfig": {
             "defaults": {
-              "custom": {
-                "align": "auto",
-                "filterable": true
-              },
-              "mappings": [
-                {
-                  "options": {
-                    "1": {
-                      "text": "UP"
-                    },
-                    "0": {
-                      "text": "DOWN"
-                    }
-                  },
-                  "type": "value"
-                }
-              ],
+              "unit": "bytes",
               "thresholds": {
                 "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 0
-                  }
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 536870912 },
+                  { "color": "red", "value": 1073741824 }
                 ]
               }
             }
@@ -352,131 +110,29 @@ data:
         },
         {
           "id": 3,
-          "title": "Cluster Resource Usage",
-          "type": "timeseries",
-          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+          "title": "Running Pods",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
           "targets": [
             {
-              "expr": "sum(rate(container_cpu_usage_seconds_total{namespace!=''}[5m])) by (namespace)",
-              "legendFormat": "{{namespace}} CPU",
+              "expr": "count(container_last_seen{namespace=\"moshi-demo\", pod=~\"moshi-.*\"})",
+              "legendFormat": "Pods",
               "refId": "A"
             }
           ]
         },
         {
           "id": 4,
-          "title": "Memory Usage by Namespace",
-          "type": "timeseries",
-          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+          "title": "GPU Node",
+          "type": "stat",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
           "targets": [
             {
-              "expr": "sum(container_memory_working_set_bytes{namespace!=''}) by (namespace) / 1024 / 1024",
-              "legendFormat": "{{namespace}} Memory (MB)",
+              "expr": "count(node_cpu_info{nixos_nvidia_cdi=\"enabled\"})",
+              "legendFormat": "montech",
               "refId": "A"
             }
           ]
-        },
-        {
-          "id": 5,
-          "title": "Quick Access Links",
-          "type": "text",
-          "gridPos": {"h": 4, "w": 24, "x": 0, "y": 28},
-          "mode": "markdown",
-          "content": "## Quick Access\n\n**Kubernetes Dashboard**: `kubectl get nodes -o wide`\n**GPU Status**: `kubectl get pods -n gpu-operator`\n**Moshi Workloads**: `kubectl get pods -n moshi-demo -o wide`\n**Logs**: `kubectl logs -n monitoring deployment/grafana`\n",
-          "options": {
-            "content": "## Quick Access\n\n**Kubernetes Dashboard**: `kubectl get nodes -o wide`\n**GPU Status**: `kubectl get pods -n gpu-operator`\n**Moshi Workloads**: `kubectl get pods -n moshi-demo -o wide`\n**Logs**: `kubectl logs -n monitoring deployment/grafana`\n",
-            "mode": "markdown"
-          }
         }
-      ],
-      "templating": {
-        "list": []
-      },
-      "time": {
-        "from": "now-1h",
-        "to": "now"
-      },
-      "timepicker": {}
+      ]
     }
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: grafana
-  namespace: monitoring
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: grafana
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
-subjects:
-  - kind: ServiceAccount
-    name: grafana
-    namespace: monitoring
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: grafana
-  namespace: monitoring
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: grafana
-  template:
-    metadata:
-      labels:
-        app: grafana
-    spec:
-      serviceAccountName: grafana
-      containers:
-        - name: grafana
-          image: grafana/grafana:latest
-          ports:
-            - containerPort: 3000
-          env:
-            - name: GF_SECURITY_ADMIN_USER
-              value: "admin"
-            - name: GF_SECURITY_ADMIN_PASSWORD
-              value: "admin"
-            - name: GF_USERS_ALLOW_SIGN_UP
-              value: "false"
-            - name: GF_SERVER_ROOT_URL
-              value: "http://montech.tail21c10a.ts.net/grafana"
-            - name: GF_SERVER_SERVE_FROM_SUB_PATH
-              value: "true"
-          volumeMounts:
-            - name: grafana-storage
-              mountPath: /var/lib/grafana
-            - name: grafana-dashboards
-              mountPath: /etc/grafana/provisioning/dashboards
-            - name: grafana-datasources
-              mountPath: /etc/grafana/provisioning/datasources
-      volumes:
-        - name: grafana-storage
-          emptyDir: {}
-        - name: grafana-dashboards
-          configMap:
-            name: grafana-dashboards
-        - name: grafana-datasources
-          configMap:
-            name: grafana-datasources
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: grafana
-  namespace: monitoring
-spec:
-  type: NodePort
-  ports:
-    - port: 3000
-      targetPort: 3000
-      nodePort: 30300
-  selector:
-    app: grafana

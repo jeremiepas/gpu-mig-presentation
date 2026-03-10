@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "@modelcontextprotocol/server-brave-search": "^0.6.2",
-    "@opencode-ai/plugin": "1.2.9"
+    "@opencode-ai/plugin": "1.2.13"
   },
   "devDependencies": {
     "detect-terminal": "2.0.0",

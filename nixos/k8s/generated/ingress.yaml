@@ -5,29 +5,49 @@ metadata:
   namespace: monitoring
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
+  tls:
+    - hosts:
+        - montech.tail21c10a.ts.net
   rules:
   - host: montech.tail21c10a.ts.net
     http:
-      paths:
-      - path: /grafana
-        pathType: Prefix
-        backend:
-          service:
-            name: grafana
-            port:
-              number: 3000
-      - path: /prometheus
-        pathType: Prefix
-        backend:
-          service:
-            name: prometheus
-            port:
-              number: 9090
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: grafana
-            port:
-              number: 3000
+        paths:
+          - path: /grafana
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+          - path: /prometheus
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus
+                port:
+                  number: 9090
+          - path: /billing-api
+            pathType: Prefix
+            backend:
+              service:
+                name: billing-api
+                port:
+                  number: 80
+          - path: /billing-metrics
+            pathType: Prefix
+            backend:
+              service:
+                name: scaleway-billing-exporter
+                port:
+                  number: 9091
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000

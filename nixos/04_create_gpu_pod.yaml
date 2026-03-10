@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Pod
 metadata:
-    name: hashcat-benchmark-pod
+  name: hashcat-benchmark-pod
 spec:
-    containers:
-        - name: hashcat-benchmark-container
-          image: dizcza/docker-hashcat
-          command: ["hashcat", "-d", "2", "-b"]
-          resources:
-              requests:
-                  nvidia.com/gpu-all: "1"
-              limits:
-                  nvidia.com/gpu-all: "1"
+  containers:
+    - name: hashcat-benchmark-container
+      image: dizcza/docker-hashcat
+      command: ["hashcat", "-d", "2", "-b"]
+      resources:
+        requests:
+          nvidia.com/gpu: "1"
+        limits:
+          nvidia.com/gpu: "1"

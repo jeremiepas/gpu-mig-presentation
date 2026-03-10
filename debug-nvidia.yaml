@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nvidia-debug
+  namespace: default
+spec:
+  containers:
+  - name: nvidia-debug
+    image: nvidia/cuda:12.4.1-base-ubuntu22.04
+    command: ["/bin/bash", "-c", "nvidia-smi && sleep infinity"]
+    resources:
+      limits:
+        nvidia.com/gpu: 1
+      requests:
+        nvidia.com/gpu: 1
+    securityContext:
+      capabilities:
+        add: ["SYS_ADMIN"]
+  restartPolicy: Never
+  nodeSelector:
+    kubernetes.io/hostname: montech

@@ -40,7 +40,7 @@ spec:
       hostPID: true
       hostNetwork: true
       containers:
-        - image: nvcr.io/nvidia/k8s MIG-partitioner:latest
+        - image: nvcr.io/nvidia/k8s-mig-partitioner:latest
           name: mig-partitioner
           securityContext:
             privileged: true
@@ -56,13 +56,13 @@ spec:
                   key: config.yaml
           volumeMounts:
             - name: nvidia-mig
-              mountPath: /usr/bin/nvidia-mig-partitioner
+              mountPath: /usr/bin
             - name: dev
               mountPath: /dev
       volumes:
         - name: nvidia-mig
           hostPath:
-            path: /usr/bin/nvidia-mig-partitioner
+            path: /usr/bin
         - name: dev
           hostPath:
             path: /dev

@@ -1,0 +1,159 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: billing-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  billing-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Scaleway Billing Dashboard",
+        "uid": "scaleway-billing",
+        "version": 1,
+        "refresh": "5m",
+        "timezone": "browser",
+        "time": { "from": "now-30d", "to": "now" },
+        "panels": [
+          {
+            "id": 1,
+            "title": "Total Monthly Cost",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+            "targets": [
+              {
+                "expr": "scaleway_monthly_cost_total",
+                "legendFormat": "Total EUR",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "currency EUR",
+                "thresholds": {
+                  "steps": [
+                    { "value": 0, "color": "green" },
+                    { "value": 100, "color": "yellow" },
+                    { "value": 500, "color": "red" }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 2,
+            "title": "L4 Hourly Cost",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+            "targets": [
+              {
+                "expr": "scaleway_l4_hourly_cost",
+                "legendFormat": "€/hour",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "currency EUR",
+                "thresholds": {
+                  "steps": [
+                    { "value": 0, "color": "green" }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 3,
+            "title": "Daily Cost Projection",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+            "targets": [
+              {
+                "expr": "scaleway_daily_cost_projection",
+                "legendFormat": "€/day",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "currency EUR",
+                "thresholds": {
+                  "steps": [
+                    { "value": 0, "color": "green" },
+                    { "value": 20, "color": "yellow" },
+                    { "value": 50, "color": "red" }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 4,
+            "title": "Monthly Cost Projection",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+            "targets": [
+              {
+                "expr": "scaleway_monthly_cost_projection",
+                "legendFormat": "€/month",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "currency EUR",
+                "thresholds": {
+                  "steps": [
+                    { "value": 0, "color": "green" },
+                    { "value": 500, "color": "yellow" },
+                    { "value": 1000, "color": "red" }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 5,
+            "title": "L4 Minutes Used",
+            "type": "graph",
+            "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+            "targets": [
+              {
+                "expr": "scaleway_l4_minutes_used",
+                "legendFormat": "Minutes",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "m"
+              }
+            }
+          },
+          {
+            "id": 6,
+            "title": "Instance Type",
+            "type": "stat",
+            "gridPos": { "h": 4, "w": 12, "x": 12, "y": 4 },
+            "targets": [
+              {
+                "expr": "scaleway_instance_type",
+                "legendFormat": "{{type}}",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "unit": "none"
+              }
+            }
+          }
+        ],
+        "templating": {
+          "list": []
+        },
+        "timepicker": {}
+      }
+    }

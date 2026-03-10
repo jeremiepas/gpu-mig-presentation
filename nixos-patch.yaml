@@ -1,0 +1,34 @@
+spec:
+  template:
+    spec:
+      containers:
+      - name: nvidia-device-plugin
+        env:
+        - name: CONFIG_MAP_NAME
+          value: "nvidia-device-plugin-config"
+        - name: NVIDIA_VISIBLE_DEVICES
+          value: "all"
+        - name: NVIDIA_DRIVER_CAPABILITIES
+          value: "compute,utility"
+        volumeMounts:
+        - name: device-plugin
+          mountPath: /var/lib/kubelet/device-plugins
+        - name: config
+          mountPath: /config
+        - name: nvidia-libs
+          mountPath: /usr/lib/x86_64-linux-gnu
+        - name: dev
+          mountPath: /dev
+      volumes:
+      - name: device-plugin
+        hostPath:
+          path: /var/lib/kubelet/device-plugins
+      - name: config
+        configMap:
+          name: nvidia-device-plugin-config
+      - name: nvidia-libs
+        hostPath:
+          path: /run/opengl-driver/lib
+      - name: dev
+        hostPath:
+          path: /dev

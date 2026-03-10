@@ -13,7 +13,7 @@ KUBECONFIG_LOCAL="$HOME/.kube/config-k3s-remote"
 instance_ip=$REMOTE_HOST
 instance_dns="montech.tail21c10a.ts.net"
 
-export KUBECONFIG="$KUBECONFIG_LOCAL"
+export x``="$KUBECONFIG_LOCAL"
 
 echo "🚀 Starting dynamic cluster deployment..."
 
@@ -38,6 +38,7 @@ metadata:
   namespace: monitoring
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
+    traefik.ingress.kubernetes.io/router.middlewares: monitoring-strip-prefix@kubernetescrd
 spec:
   rules:
   - host: $instance_dns

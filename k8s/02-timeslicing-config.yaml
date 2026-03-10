@@ -1,25 +1,14 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: timeslicing-config
-  namespace: gpu-operator
-data:
-  config.yaml: |
-    version: v1
-    sharing:
-      timeSlicing:
-        resources:
-          - name: nvidia.com/gpu
-            replicas: 4
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: nvidia-device-plugin-config-ts
-  namespace: gpu-operator
+  name: nvidia-device-plugin-config
+  namespace: kube-system
 data:
   config.yaml: |
     version: v1
+    flags:
+      migStrategy: none
     sharing:
       timeSlicing:
         resources:
