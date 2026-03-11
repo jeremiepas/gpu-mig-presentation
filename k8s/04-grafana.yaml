@@ -1,3 +1,19 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  type: NodePort
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30300
+      name: http
+  selector:
+    app: grafana
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -49,6 +65,34 @@ data:
       allowUiUpdates: true
       options:
         path: /etc/grafana/provisioning/dashboards
+---
+# Grafana IngressRoute - subdomain-based routing
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`grafana.montech.tail21c10a.ts.net`)
+      kind: Rule
+      services:
+        - name: grafana
+          port: 3000
+  tls:
+    {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-content
+  namespace: monitoring
+data:
   k8s-cluster.json: |
     {
       "title": "Moshi Inference - Container Metrics",

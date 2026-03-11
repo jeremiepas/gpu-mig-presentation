@@ -1,0 +1,23 @@
+---
+# ArgoCD IngressRoute - subdomain-based routing
+# No middleware needed since we're using root path
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-server-route
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-server-route
+    app.kubernetes.io/part-of: argocd
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+    - match: Host(`argocd.montech.tail21c10a.ts.net`)
+      kind: Rule
+      services:
+        - name: argocd-server
+          port: 80
+  tls:
+    {}

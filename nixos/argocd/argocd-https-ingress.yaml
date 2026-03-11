@@ -1,0 +1,111 @@
+# ArgoCD HTTPS Ingress Configuration with Traefik
+# Self-signed certificate for insecure TLS access
+
+---
+# Self-signed TLS certificate for ArgoCD
+# Generate with: openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout /tmp/argocd.key -out /tmp/argocd.crt -subj "/CN=argocd.montech.mylab" -addext "subjectAltName=DNS:argocd.montech.mylab"
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-tls
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-tls
+    app.kubernetes.io/part-of: argocd
+type: kubernetes.io/tls
+data:
+  # Self-signed cert for argocd.montech.mylab
+  # This is a placeholder - apply with: kubectl create secret tls argocd-tls --cert=/tmp/argocd.crt --key=/tmp/argocd.key -n argocd
+  tls.crt: ""
+  tls.key: ""
+
+---
+# Traefik IngressRoute for HTTPS access
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-https-route
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-https-route
+    app.kubernetes.io/part-of: argocd
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`argocd.montech.mylab`)
+      kind: Rule
+      services:
+        - name: argocd-server
+          port: 80
+  tls:
+    secretName: argocd-tls
+
+---
+# Middleware for HTTP to HTTPS redirect
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: redirect-https
+    app.kubernetes.io/part-of: argocd
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+
+---
+# Traefik IngressRoute for HTTP redirect to HTTPS
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: argocd-http-redirect
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-http-redirect
+    app.kubernetes.io/part-of: argocd
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`argocd.montech.mylab`)
+      kind: Rule
+      middlewares:
+        - name: redirect-https
+          namespace: argocd
+      services:
+        - name: argocd-server
+          port: 80
+
+---
+# Standard Kubernetes Ingress (alternative, also works with Traefik)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-ingress-tls
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-ingress-tls
+    app.kubernetes.io/part-of: argocd
+  annotations:
+    # Traefik entrypoints
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  tls:
+    - hosts:
+        - argocd.montech.mylab
+      secretName: argocd-tls
+  rules:
+    - host: argocd.montech.mylab
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80

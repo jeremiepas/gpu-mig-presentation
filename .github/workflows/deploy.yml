@@ -174,3 +174,46 @@ jobs:
           echo "=== Service URLs ==="
           echo "Grafana: http://${{ needs.terraform.outputs.instance_dns }}/grafana"
           echo "Prometheus: http://${{ needs.terraform.outputs.instance_dns }}/prometheus"
+
+  deploy-argocd:
+    name: Deploy Argo CD
+    needs: [terraform, deploy-cluster, deploy-mig]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH and kubectl
+        run: |
+          mkdir -p ~/.ssh ~/.kube
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keygen -R ${{ needs.terraform.outputs.instance_ip }} || true
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ needs.terraform.outputs.instance_ip }} "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
+          sed -i 's|127.0.0.1|${{ needs.terraform.outputs.instance_ip }}|g' ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy Argo CD
+        run: |
+          kubectl apply -f k8s/argocd/00-namespace.yaml
+          kubectl apply -f k8s/argocd/01-argocd-install.yaml
+          kubectl apply -f k8s/argocd/04-argocd-appproject.yaml
+          if [ -f k8s/argocd/03-applications.yaml ]; then
+            kubectl apply -f k8s/argocd/03-applications.yaml
+          fi
+
+      - name: Wait for Argo CD to be ready
+        run: |
+          kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s
+
+      - name: Get Argo CD initial admin password
+        run: |
+          echo "Argo CD admin password:"
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ needs.terraform.outputs.instance_ip }} "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
+
+      - name: Display Argo CD status
+        run: |
+          kubectl get pods -n argocd
+          echo ""
+          echo "=== Argo CD deployed successfully ==="
+          echo "Access via: kubectl port-forward svc/argocd-server -n argocd 8080:443"

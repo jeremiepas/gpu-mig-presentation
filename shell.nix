@@ -13,5 +13,7 @@ pkgs.mkShell {
     act
     packer
     bun
+    uv
+    argocd
   ];
 }
