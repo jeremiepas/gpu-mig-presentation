@@ -437,7 +437,7 @@ data:
 
 ```
 URL: https://<domain>/argocd
-Example: https://montech.tail21c10a.ts.net/argocd
+Example: https://montech.montech.mylab/argocd
 ```
 
 **Standard K8s**:
@@ -472,7 +472,7 @@ sudo install -m 555 argocd-darwin-amd64 /usr/local/bin/argocd
 
 ```bash
 # NixOS K3s
-argocd login montech.tail21c10a.ts.net:80 --insecure --grpc-web-root-path /argocd
+argocd login montech.montech.mylab:80 --insecure --grpc-web-root-path /argocd
 
 # Standard K8s
 argocd login <domain>:443 --grpc-web-root-path /argocd

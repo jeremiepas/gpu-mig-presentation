@@ -14,10 +14,9 @@ spec:
     - web
     - websecure
   routes:
-    - match: Host(`argocd.montech.tail21c10a.ts.net`)
+    - match: Host(`argocd.montech.montech.mylab`)
       kind: Rule
       services:
         - name: argocd-server
           port: 80
-  tls:
-    {}
+  tls: {}

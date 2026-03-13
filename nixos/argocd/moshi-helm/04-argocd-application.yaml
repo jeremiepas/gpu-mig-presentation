@@ -57,7 +57,7 @@ spec:
           ingress:
             enabled: true
             className: nginx
-            host: moshi.montech.tail21c10a.ts.net
+            host: moshi.montech.montech.mylab
             path: /
             pathType: Prefix
             annotations:

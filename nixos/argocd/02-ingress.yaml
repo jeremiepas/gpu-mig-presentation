@@ -60,7 +60,7 @@ metadata:
     traefik.ingress.kubernetes.io/router.middlewares: argocd-argocd-strip-prefix@kubernetescrd,argocd-argocd-basic-auth@kubernetescrd
 spec:
   rules:
-    - host: montech.tail21c10a.ts.net
+    - host: montech.montech.mylab
       http:
         paths:
           - path: /argocd

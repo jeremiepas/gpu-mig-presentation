@@ -98,7 +98,7 @@ spec:
 
 ### Access Grafana UI
 - [x] Access Grafana via NodePort: http://<NODE_IP>:32518
-- [ ] Access Grafana via Tailscale URL: http://montech.tail21c10a.ts.net
+- [ ] Access Grafana via Tailscale URL: http://montech.montech.mylab
 - [ ] Login with default credentials (admin/admin)
 
 ## Current Status

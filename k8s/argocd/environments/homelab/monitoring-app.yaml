@@ -19,7 +19,7 @@ spec:
   
   sources:
     # Source 1: Common monitoring stack (Prometheus, Grafana base)
-    - repoURL: https://github.com/jeremiepas/gpu-mig-presentation.git
+    - repoURL: https://github.com/jeremie-lesage/gentle-circuit.git
       targetRevision: HEAD
       path: k8s/common
       directory:
@@ -27,7 +27,7 @@ spec:
         include: '{03-prometheus.yaml,04-grafana*.yaml,09-node-exporter.yaml,12-kube-state-metrics.yaml,14-dcgm-exporter.yaml}'
     
     # Source 2: NixOS generated dashboards and Grafana config
-    - repoURL: https://github.com/jeremiepas/gpu-mig-presentation.git
+    - repoURL: https://github.com/jeremie-lesage/gentle-circuit.git
       targetRevision: HEAD
       path: nixos/k8s/generated
       directory:

@@ -96,7 +96,7 @@ This document tracks the implementation status of ArgoCD deployment across NixOS
   - Update in both NixOS and K8s application files
 
 - [ ] **Configure domain names** in ingress manifests
-  - NixOS: Update `montech.tail21c10a.ts.net` if changed
+  - NixOS: Update `montech.montech.mylab` if changed
   - Standard K8s: Update `4edcb867-7b4e-4890-b3d6-7912075f20d8.pub.instances.scw.cloud`
 
 - [ ] **Set up Infisical credentials** (if using)

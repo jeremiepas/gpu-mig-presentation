@@ -350,7 +350,7 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   rules:
-    - host: montech.tail21c10a.ts.net
+    - host: montech.montech.mylab
       http:
         paths:
           - path: /argocd
@@ -362,7 +362,7 @@ spec:
                   number: 80
   tls:
     - hosts:
-        - montech.tail21c10a.ts.net
+        - montech.montech.mylab
       secretName: argocd-tls-secret
 ---
 apiVersion: traefik.containo.us/v1alpha1
@@ -523,7 +523,7 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
 
 # Access ArgoCD UI
-# URL: https://montech.tail21c10a.ts.net/argocd
+# URL: https://montech.montech.mylab/argocd
 # Username: admin
 # Password: <retrieved from above>
 ```
@@ -1122,7 +1122,7 @@ kubectl get ingress -n argocd
 kubectl logs -n argocd -l app.kubernetes.io/name=argocd-server --tail=100
 
 # Test ArgoCD CLI
-argocd login montech.tail21c10a.ts.net:80 --insecure --grpc-web-root-path /argocd
+argocd login montech.montech.mylab:80 --insecure --grpc-web-root-path /argocd
 
 # List applications
 argocd app list

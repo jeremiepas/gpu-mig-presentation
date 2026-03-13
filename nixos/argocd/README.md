@@ -75,7 +75,7 @@ kubectl apply -f 04-infisical-integration.yaml
 ArgoCD UI is accessible at:
 
 ```
-https://montech.tail21c10a.ts.net/argocd
+https://montech.montech.mylab/argocd
 ```
 
 ### Via NodePort (Direct Access)
@@ -142,7 +142,7 @@ argocd version
 
 ```bash
 # Login to ArgoCD server
-argocd login montech.tail21c10a.ts.net:80 \
+argocd login montech.montech.mylab:80 \
   --username admin \
   --password $(kubectl get secret argocd-secret -n argocd -o jsonpath="{.data.admin.password}" | base64 -d) \
   --insecure \

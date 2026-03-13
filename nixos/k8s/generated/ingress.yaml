@@ -9,10 +9,9 @@ metadata:
 spec:
   tls:
     - hosts:
-        - montech.tail21c10a.ts.net
+        - montech.montech.mylab
   rules:
-  - host: montech.tail21c10a.ts.net
-    http:
+    - host: montech.montech.mylabhttp:
         paths:
           - path: /grafana
             pathType: Prefix

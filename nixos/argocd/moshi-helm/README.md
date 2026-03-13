@@ -182,7 +182,7 @@ kubectl run -it --rm debug --image=curlimages/curl --restart=Never -- \
   curl -v http://moshi-webui.moshi.svc.cluster.local:8080
 
 # External access
-# Visit: https://moshi.montech.tail21c10a.ts.net
+# Visit: https://moshi.montech.montech.mylab
 ```
 
 ## Troubleshooting
@@ -288,7 +288,7 @@ kubectl logs -n longhorn-system -l app=longhorn-manager --tail=100
 
 ### Ingress Not Working
 
-**Symptoms:** Cannot access moshi.montech.tail21c10a.ts.net
+**Symptoms:** Cannot access moshi.montech.montech.mylab
 
 **Diagnosis:**
 ```bash
@@ -304,7 +304,7 @@ kubectl get pods -n ingress-nginx
 kubectl get svc -n ingress-nginx
 
 # Test DNS resolution
-nslookup moshi.montech.tail21c10a.ts.net
+nslookup moshi.montech.montech.mylab
 
 # Check Tailscale funnel/status
 tailscale status

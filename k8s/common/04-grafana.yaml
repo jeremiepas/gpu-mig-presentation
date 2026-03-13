@@ -79,13 +79,12 @@ spec:
     - web
     - websecure
   routes:
-    - match: Host(`grafana.montech.tail21c10a.ts.net`)
+    - match: Host(`grafana.montech.montech.mylab`)
       kind: Rule
       services:
         - name: grafana
           port: 3000
-  tls:
-    {}
+  tls: {}
 ---
 apiVersion: v1
 kind: ConfigMap
