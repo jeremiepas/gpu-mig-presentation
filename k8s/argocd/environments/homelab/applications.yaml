@@ -1,0 +1,241 @@
+---
+# ArgoCD Applications for Homelab Environment
+# Deploys all manifests from nixos/ and k8s/common/ directories
+# Organized by: Infrastructure, GPU, Monitoring, Applications
+
+# ============================================================================
+# 1. Common Infrastructure (from k8s/common/)
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: common-infrastructure
+  namespace: argocd
+  labels:
+    environment: homelab
+    category: infrastructure
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeremiepas/gpu-mig-presentation.git
+    targetRevision: HEAD
+    path: k8s/common
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+---
+# ============================================================================
+# 2. NixOS Base Infrastructure (namespaces, runtime, GPU setup)
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: nixos-base-infrastructure
+  namespace: argocd
+  labels:
+    environment: homelab
+    category: infrastructure
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeremiepas/gpu-mig-presentation.git
+    targetRevision: HEAD
+    path: nixos
+    directory:
+      recurse: false
+      include: '{00-namespaces.yaml,01_runtimeClass.yaml,02_demonSet_gpu.yaml,03_node.yaml}'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: ""
+      kind: Node
+      jsonPointers:
+        - /status
+
+---
+# ============================================================================
+# 3. Monitoring Stack (Prometheus, Grafana, Dashboards)
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-stack
+  namespace: argocd
+  labels:
+    environment: homelab
+    category: observability
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeremiepas/gpu-mig-presentation.git
+    targetRevision: HEAD
+    path: nixos/k8s/generated
+    directory:
+      recurse: true
+      include: '{grafana.yaml,billing-dashboard.yaml}'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+---
+# ============================================================================
+# 4. Homelab-Specific Configurations (GPU, Storage, Ingress)
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: homelab-specific
+  namespace: argocd
+  labels:
+    environment: homelab
+    category: configuration
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeremiepas/gpu-mig-presentation.git
+    targetRevision: HEAD
+    path: k8s/environments/homelab
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+---
+# ============================================================================
+# 5. Moshi Application (WebUI and Workloads)
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: moshi-application
+  namespace: argocd
+  labels:
+    environment: homelab
+    category: application
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeremiepas/gpu-mig-presentation.git
+    targetRevision: HEAD
+    path: nixos/kube-moshi-webui
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: moshi-demo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+---
+# ============================================================================
+# 6. Ingress Configuration (from nixos/k8s/generated)
+# ============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress-configuration
+  namespace: argocd
+  labels:
+    environment: homelab
+    category: networking
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jeremiepas/gpu-mig-presentation.git
+    targetRevision: HEAD
+    path: nixos/k8s/generated
+    directory:
+      recurse: false
+      include: 'ingress.yaml'
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

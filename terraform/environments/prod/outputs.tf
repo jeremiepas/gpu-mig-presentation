@@ -1,29 +1,26 @@
+# Output values for prod environment
+
 output "instance_ip" {
-  description = "Public IP of the prod instance"
-  value       = scaleway_instance_server.prod_server.public_ips[0].address
+  description = "Public IP address of the prod instance"
+  value       = module.scaleway_instance.instance_ip
 }
 
 output "instance_id" {
-  description = "Instance ID"
-  value       = scaleway_instance_server.prod_server.id
+  description = "ID of the prod instance"
+  value       = module.scaleway_instance.instance_id
 }
 
-output "instance_dns" {
-  description = "Public DNS of the instance (use without zone prefix)"
-  value       = "${split("/", scaleway_instance_server.prod_server.id)[1]}.pub.instances.scw.cloud"
+output "kubeconfig_path" {
+  description = "Path to kubeconfig file"
+  value       = module.k3s_cluster.kubeconfig_path
 }
 
-output "ssh_command" {
-  description = "SSH command to connect"
-  value       = "ssh root@${scaleway_instance_server.prod_server.public_ips[0].address}"
+output "argocd_url" {
+  description = "ArgoCD URL"
+  value       = module.argocd_bootstrap.argocd_url
 }
 
-output "grafana_url" {
-  description = "Grafana URL (path-based routing)"
-  value       = "http://${split("/", scaleway_instance_server.prod_server.id)[1]}.pub.instances.scw.cloud/grafana"
-}
-
-output "prometheus_url" {
-  description = "Prometheus URL (path-based routing)"
-  value       = "http://${split("/", scaleway_instance_server.prod_server.id)[1]}.pub.instances.scw.cloud/prometheus"
+output "argocd_password_file" {
+  description = "Path to ArgoCD initial admin password file"
+  value       = module.argocd_bootstrap.initial_password_file
 }

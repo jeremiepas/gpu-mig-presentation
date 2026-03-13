@@ -1,0 +1,111 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: moshi-nodeport
+  namespace: moshi-demo
+  labels:
+    app: moshi-demo
+    environment: homelab
+spec:
+  type: NodePort
+  selector:
+    app: moshi-service
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8080
+    targetPort: 8080
+    nodePort: 30080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-nodeport
+  namespace: monitoring
+  labels:
+    app: grafana
+    environment: homelab
+spec:
+  type: NodePort
+  selector:
+    app: grafana
+  ports:
+  - name: http
+    protocol: TCP
+    port: 3000
+    targetPort: 3000
+    nodePort: 30300
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-nodeport
+  namespace: monitoring
+  labels:
+    app: prometheus
+    environment: homelab
+spec:
+  type: NodePort
+  selector:
+    app: prometheus
+  ports:
+  - name: http
+    protocol: TCP
+    port: 9090
+    targetPort: 9090
+    nodePort: 30090
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homelab-ingress
+  namespace: moshi-demo
+  labels:
+    app: moshi-demo
+    environment: homelab
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: moshi.montech.mylab
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: moshi-service
+            port:
+              number: 8080
+  - host: grafana.montech.mylab
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 3000
+  - host: argocd.montech.mylab
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: argocd-server
+            port:
+              number: 443
+  - host: prometheus.montech.mylab
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: prometheus
+            port:
+              number: 9090

@@ -1,11 +1,11 @@
 # Local GPU Deployment Guide
 
-This guide explains how to deploy the GPU MIG vs Time Slicing infrastructure on your local gaming computer with NVIDIA GPU (192.168.1.96).
+This guide explains how to deploy the GPU MIG vs Time Slicing infrastructure on your local gaming computer with NVIDIA GPU (100.120.26.64).
 
 ## Architecture Overview
 
 Instead of using Scaleway cloud infrastructure, this local deployment:
-- Runs on your personal gaming computer (`192.168.1.96`)
+- Runs on your personal gaming computer (`100.120.26.64`)
 - Uses K3s as the Kubernetes distribution
 - Leverages your NVIDIA GeForce RTX 5070 Ti GPU
 - Provides same functionality through IP-based access instead of DNS
@@ -13,7 +13,7 @@ Instead of using Scaleway cloud infrastructure, this local deployment:
 
 ## Prerequisites
 
-1. Access to your gaming computer at `192.168.1.96`
+1. Access to your gaming computer at `100.120.26.64`
 2. NVIDIA GPU with drivers installed (verified with `nvidia-smi`)
 3. SSH access using the provided `ssh_key`
 4. NixOS-based system with Docker and NVIDIA Container Toolkit configured
@@ -56,9 +56,9 @@ source credentials-local.env
 
 Once deployment is complete, you can access:
 
-- **Grafana**: http://192.168.1.96:30300 (admin/admin)
-- **Prometheus**: http://192.168.1.96:30090
-- **K3s API**: https://192.168.1.96:6443
+- **Grafana**: http://100.120.26.64:30300 (admin/admin)
+- **Prometheus**: http://100.120.26.64:30090
+- **K3s API**: https://100.120.26.64:6443
 
 Note: These URLs are accessible only from your local network.
 
@@ -66,12 +66,12 @@ Note: These URLs are accessible only from your local network.
 
 ### Time Slicing Mode (Default)
 ```bash
-ssh -i ssh_key jeremie@192.168.1.96 'sudo k3s kubectl apply -f ~/k8s-manifests/02-timeslicing-config.yaml'
+ssh -i ssh_key jeremie@100.120.26.64 'sudo k3s kubectl apply -f ~/k8s-manifests/02-timeslicing-config.yaml'
 ```
 
 ### MIG Mode
 ```bash
-ssh -i ssh_key jeremie@192.168.1.96 'sudo k3s kubectl apply -f ~/k8s-manifests/02-mig-config.yaml'
+ssh -i ssh_key jeremie@100.120.26.64 'sudo k3s kubectl apply -f ~/k8s-manifests/02-mig-config.yaml'
 ```
 
 ## Local Kubeconfig
@@ -106,7 +106,7 @@ kubectl-local get pods -A
 
 1. **SSH Connection Issues**:
    - Ensure `ssh_key` permissions are correct: `chmod 400 ssh_key`
-   - Verify SSH access manually: `ssh -i ssh_key jeremie@192.168.1.96`
+   - Verify SSH access manually: `ssh -i ssh_key jeremie@100.120.26.64`
 
 2. **K3s Not Starting**:
    - Check service status: `ssh-local 'sudo systemctl status k3s'`
@@ -121,7 +121,7 @@ kubectl-local get pods -A
 To completely remove the local deployment:
 ```bash
 # Remove K3s (on remote machine)
-ssh -i ssh_key jeremie@192.168.1.96 'sudo /usr/local/bin/k3s-uninstall.sh'
+ssh -i ssh_key jeremie@100.120.26.64 'sudo /usr/local/bin/k3s-uninstall.sh'
 
 # Remove local kubeconfig
 rm -f ~/.kube/config-gpu-local

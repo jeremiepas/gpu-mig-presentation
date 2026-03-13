@@ -45,9 +45,9 @@ spec:
             - name: ARGOCD_CONTROLLER_REPLICAS
               value: "1"
             - name: ARGOCD_RECONCILIATION_TIMEOUT
-              value: 180s
+              value: "180s"
             - name: ARGOCD_HARD_RECONCILIATION_TIMEOUT
-              value: 0
+              value: "0"
             - name: ARGOCD_REPO_SERVER
               value: argocd-repo-server:8081
           ports:
@@ -122,7 +122,7 @@ spec:
             - containerPort: 8081
               name: repo-server
             - containerPort: 8084
-              name: repo-server-grpc
+              name: repo-grpc
           resources:
             limits:
               cpu: "500m"
@@ -166,7 +166,7 @@ spec:
       name: repo-server
     - port: 8084
       targetPort: 8084
-      name: repo-server-grpc
+      name: repo-grpc
   selector:
     app.kubernetes.io/name: argocd-repo-server
 ---

@@ -4,8 +4,6 @@ metadata:
   name: main-ingress
   namespace: monitoring
   annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web
-  annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
 spec:

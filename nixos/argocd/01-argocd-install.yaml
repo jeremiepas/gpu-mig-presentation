@@ -53,8 +53,6 @@ spec:
           command:
             - argocd-server
             - --insecure
-            - --rootpath
-            - /argocd
           ports:
             - containerPort: 8080
               name: http
@@ -532,7 +530,7 @@ metadata:
     app.kubernetes.io/part-of: argocd
 data:
   # Enable insecure mode for easier ingress setup
-  url: http://localhost:8080/argocd
+  url: https://argocd.montech.mylab
   users.anonymous.enabled: "false"
   # Enable resource tracking
   application.resourceTrackingMethod: annotation

@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: migstrategy-config
+  namespace: gpu-operator
+data:
+  config.yaml: |
+    version: v1
+    mig:
+      mode: "single"
+      config:
+        - gi: 1
+          ci: 1
+          memory: "6GB"
+        - gi: 2
+          ci: 1
+          memory: "12GB"
+        - gi: 3
+          ci: 1
+          memory: "24GB"
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-mig-partitioner
+  namespace: gpu-operator
+  labels:
+    app: nvidia-mig-partitioner
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-mig-partitioner
+  template:
+    metadata:
+      labels:
+        app: nvidia-mig-partitioner
+    spec:
+      serviceAccountName: nvidia-device-plugin
+      priorityClassName: system-node-critical
+      hostPID: true
+      hostNetwork: true
+      containers:
+        - image: nvcr.io/nvidia/k8s-mig-partitioner:latest
+          name: mig-partitioner
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+          env:
+            - name: MIG_PARTITIONER_MODE
+              value: "static"
+            - name: MIG_CONFIG
+              valueFrom:
+                configMapKeyRef:
+                  name: migstrategy-config
+                  key: config.yaml
+          volumeMounts:
+            - name: nvidia-mig
+              mountPath: /usr/bin
+            - name: dev
+              mountPath: /dev
+      volumes:
+        - name: nvidia-mig
+          hostPath:
+            path: /usr/bin
+        - name: dev
+          hostPath:
+            path: /dev

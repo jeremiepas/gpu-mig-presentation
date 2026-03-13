@@ -1,0 +1,75 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nvidia-dcgm-exporter
+  namespace: monitoring
+  labels:
+    app: nvidia-dcgm-exporter
+spec:
+  selector:
+    app: nvidia-dcgm-exporter
+  ports:
+    - name: metrics
+      port: 9400
+      targetPort: 9400
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nvidia-dcgm-exporter
+  namespace: monitoring
+  labels:
+    app: nvidia-dcgm-exporter
+spec:
+  selector:
+    matchLabels:
+      app: nvidia-dcgm-exporter
+  template:
+    metadata:
+      labels:
+        app: nvidia-dcgm-exporter
+    spec:
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: nvidia-dcgm-exporter
+          image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.6-3.4.2-ubuntu22.04
+          ports:
+            - containerPort: 9400
+              name: metrics
+          env:
+            - name: DCGM_EXPORTER_LISTEN
+              value: :9400
+            - name: DCGM_EXPORTER_KUBERNETES
+              value: "true"
+            - name: DCGM_EXPORTER_KUBERNETES_GPU_ID_TYPE
+              value: device-name
+          volumeMounts:
+            - name: nvidia-install-dir
+              mountPath: /usr/local/nvidia
+              readOnly: true
+            - name: dcgm-socket
+              mountPath: /run/nvidia-dcgm
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            privileged: true
+      volumes:
+        - name: nvidia-install-dir
+          hostPath:
+            path: /usr/local/nvidia
+            type: Directory
+        - name: dcgm-socket
+          hostPath:
+            path: /run/nvidia-dcgm
+            type: DirectoryOrCreate

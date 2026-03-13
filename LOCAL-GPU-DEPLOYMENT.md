@@ -1,6 +1,6 @@
 # Local GPU Deployment
 
-Deploy GPU workloads on your local gaming computer (192.168.1.96) with RTX 5070 Ti.
+Deploy GPU workloads on your local gaming computer (100.120.26.64) with RTX 5070 Ti.
 
 ## Prerequisites
 
@@ -49,7 +49,7 @@ kubectl apply -f k8s/09-moshi-inference-timeslicing.yaml
 
 ```
 ┌─────────────────────────────────────────────┐
-│   Gaming PC (192.168.1.96)                  │
+│   Gaming PC (100.120.26.64)                  │
 │                                             │
 │  ┌──────────────────┐  ┌─────────────────┐ │
 │  │   K3s Server     │  │  NVIDIA GPU     │ │
@@ -102,7 +102,7 @@ kubectl logs -n gpu-operator deployment/gpu-operator
 
 ```bash
 # Check K3s status
-ssh jeremie@192.168.1.96 "sudo systemctl status k3s"
+ssh jeremie@100.120.26.64 "sudo systemctl status k3s"
 
 # Get kubeconfig
 ./deploy-local-gpu.sh
@@ -112,8 +112,8 @@ ssh jeremie@192.168.1.96 "sudo systemctl status k3s"
 
 ```bash
 # Regenerate kubeconfig
-ssh -i ssh_key jeremie@192.168.1.96 "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config-gpu-local
-sed -i 's|127.0.0.1|192.168.1.96|g' ~/.kube/config-gpu-local
+ssh -i ssh_key jeremie@100.120.26.64 "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config-gpu-local
+sed -i 's|127.0.0.1|100.120.26.64|g' ~/.kube/config-gpu-local
 chmod 600 ~/.kube/config-gpu-local
 export KUBECONFIG=~/.kube/config-gpu-local
 ```
@@ -125,7 +125,7 @@ export KUBECONFIG=~/.kube/config-gpu-local
 | Location | Cloud | Home network |
 | GPU | L4-24GB / H100 | RTX 5070 Ti |
 | Control Plane | Cloud instance | Gaming PC |
-| Network | Public IP | Private IP (192.168.1.96) |
+| Network | Public IP | Private IP (100.120.26.64) |
 | Access | Tailscale VPN | SSH key |
 | Cost | €0.85-€4/hour | Free (own hardware) |
 | MIG Support | Yes (H100, L4) | No (consumer GPU) |

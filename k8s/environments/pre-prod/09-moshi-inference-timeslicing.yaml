@@ -1,0 +1,146 @@
+# Moshi Inference with Prometheus Metrics
+# This creates a sidecar that exposes inference metrics
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: moshi-metrics-scripts
+  namespace: moshi-demo
+data:
+  metrics-exporter.py: |
+    #!/usr/bin/env python3
+    """Moshi inference metrics exporter for Prometheus"""
+    import time
+    import random
+    import re
+    from prometheus_client import start_http_server, Gauge, Counter, Histogram
+    
+    # Define metrics
+    TOKENS_GENERATED = Counter('moshi_tokens_generated_total', 'Total tokens generated', ['pod', 'model'])
+    TOKENS_PER_SECOND = Gauge('moshi_tokens_per_second', 'Token generation rate', ['pod', 'model'])
+    INFERENCE_LATENCY = Histogram('moshi_inference_latency_seconds', 'Inference latency', ['pod', 'model'])
+    ACTIVE_REQUESTS = Gauge('moshi_active_requests', 'Active inference requests', ['pod', 'model'])
+    GPU_MEMORY_USED = Gauge('moshi_gpu_memory_bytes', 'GPU memory used', ['pod', 'model'])
+    MODEL_LOAD_TIME = Gauge('moshi_model_load_time_seconds', 'Model load time', ['pod', 'model'])
+    
+    def simulate_inference(pod_name, model_name):
+        """Simulate Moshi inference with realistic metrics"""
+        # Simulate model load time (1-5 seconds)
+        load_time = random.uniform(1, 5)
+        MODEL_LOAD_TIME.labels(pod=pod_name, model=model_name).set(load_time)
+        time.sleep(load_time)
+        
+        while True:
+            # Simulate active request
+            ACTIVE_REQUESTS.labels(pod=pod_name, model=model_name).inc()
+            
+            # Simulate inference latency (50-500ms for TTS, 100-1000ms for STT)
+            latency = random.uniform(0.05, 1.0) if 'tts' in model_name else random.uniform(0.1, 1.0)
+            
+            # Simulate tokens generated (20-200 tokens)
+            tokens = random.randint(20, 200)
+            
+            # Record metrics
+            INFERENCE_LATENCY.labels(pod=pod_name, model=model_name).observe(latency)
+            TOKENS_GENERATED.labels(pod=pod_name, model=model_name).inc(tokens)
+            TOKENS_PER_SECOND.labels(pod=pod_name, model=model_name).set(tokens / latency)
+            
+            # Simulate GPU memory (500MB - 2GB depending on model)
+            gpu_mem = random.randint(500, 2000) * 1024 * 1024
+            GPU_MEMORY_USED.labels(pod=pod_name, model=model_name).set(gpu_mem)
+            
+            ACTIVE_REQUESTS.labels(pod=pod_name, model=model_name).dec()
+            
+            # Wait before next inference (1-5 seconds)
+            time.sleep(random.uniform(1, 5))
+    
+    if __name__ == '__main__':
+        import sys
+        pod_name = sys.argv[1] if len(sys.argv) > 1 else 'moshi-inference'
+        model_name = sys.argv[2] if len(sys.argv) > 2 else 'moshi-stt'
+        
+        # Start Prometheus exporter on port 8000
+        start_http_server(8000)
+        print(f"Started metrics exporter for {pod_name}/{model_name} on port 8000")
+        
+        simulate_inference(pod_name, model_name)
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: moshi-inference-ts
+  namespace: moshi-demo
+  labels:
+    app: moshi-inference
+    mode: timeslicing
+spec:
+  restartPolicy: Always
+  containers:
+    - name: moshi
+      image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "Starting Moshi inference in Time Slicing mode"
+          # In real deployment, this would run actual Moshi inference
+          # For now, simulate with the metrics exporter
+          pip install prometheus-client -q
+          python3 /scripts/metrics-exporter.py moshi-inference-ts moshi-stt
+      ports:
+        - containerPort: 8000
+          name: metrics
+      volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+          memory: "4Gi"
+          cpu: "2"
+        requests:
+          memory: "2Gi"
+          cpu: "1"
+  volumes:
+    - name: scripts
+      configMap:
+        name: moshi-metrics-scripts
+        defaultMode: 0755
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: moshi-inference-ts-2
+  namespace: moshi-demo
+  labels:
+    app: moshi-inference
+    mode: timeslicing
+spec:
+  restartPolicy: Always
+  containers:
+    - name: moshi
+      image: nvcr.io/nvidia/cuda:12.2.0-runtime-ubuntu22.04
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          echo "Starting Moshi inference in Time Slicing mode"
+          pip install prometheus-client -q
+          python3 /scripts/metrics-exporter.py moshi-inference-ts-2 moshi-tts
+      ports:
+        - containerPort: 8000
+          name: metrics
+      volumeMounts:
+        - name: scripts
+          mountPath: /scripts
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+          memory: "4Gi"
+          cpu: "2"
+        requests:
+          memory: "2Gi"
+          cpu: "1"
+  volumes:
+    - name: scripts
+      configMap:
+        name: moshi-metrics-scripts
+        defaultMode: 0755

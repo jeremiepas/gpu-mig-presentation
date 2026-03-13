@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: gpu-demo
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: argocd
+spec:
+  description: GPU MIG demonstration project for multi-environment deployments
+  
+  sourceRepos:
+  - '*'
+  
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  
+  roles:
+  - name: admin
+    description: Admin role for gpu-demo project
+    policies:
+    - p, proj:gpu-demo:admin, applications, *, gpu-demo/*, allow
+    - p, proj:gpu-demo:admin, repositories, *, *, allow
+    groups:
+    - gpu-demo-admins
+  
+  - name: developer
+    description: Developer role with read-only access
+    policies:
+    - p, proj:gpu-demo:developer, applications, get, gpu-demo/*, allow
+    - p, proj:gpu-demo:developer, applications, sync, gpu-demo/*, allow
+    groups:
+    - gpu-demo-developers

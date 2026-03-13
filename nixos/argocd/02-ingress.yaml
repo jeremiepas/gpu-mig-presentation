@@ -85,7 +85,7 @@ spec:
     - web
     - websecure
   routes:
-    - match: Host(`montech.tail21c10a.ts.net`) && PathPrefix(`/argocd`)
+    - match: Host(`argocd.montech.mylab`)
       kind: Rule
       middlewares:
         - name: argocd-strip-prefix
@@ -93,4 +93,5 @@ spec:
       services:
         - name: argocd-server
           port: 80
-
+  tls:
+    secretName: argocd-tls

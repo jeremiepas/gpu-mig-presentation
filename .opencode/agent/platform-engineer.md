@@ -1,7 +1,7 @@
 ---
 description: DevOps/Platform Engineer for Scaleway GPU infrastructure - manages Terraform, Kubernetes, CI/CD, and monitoring
 mode: all
-model: ollama/qwen3-coder:480b-cloud
+model: ollama/glm-5cloud
 temperature: 0.3
 tools:
   read: true
