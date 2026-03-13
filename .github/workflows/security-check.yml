@@ -1,0 +1,214 @@
+name: Security Scan
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 0"
+
+jobs:
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    outputs:
+      tfsec-results: ${{ steps.parse-tfsec.outputs.results }}
+      checkov-results: ${{ steps.parse-checkov.outputs.results }}
+      trivy-results: ${{ steps.parse-trivy.outputs.results }}
+      issues-created: ${{ steps.create-issues.outputs.issues-created }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup GitHub CLI
+        run: gh --version
+
+      - name: Install dependencies
+        run: pip install jq
+
+      - name: Run tfsec on terraform/
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          soft-fail: true
+          tfsec_args: --format=json --out=tfsec-results.json
+          working-directory: terraform/
+        continue-on-error: true
+
+      - name: Run checkov on k8s/
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: k8s/
+          output_format: json
+          output_file_path: checkov-results.json
+          soft-fail: true
+        continue-on-error: true
+
+      - name: Run trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: "."
+          format: json
+          output: trivy-results.json
+          severity: CRITICAL,HIGH
+        continue-on-error: true
+
+      - name: Parse tfsec results
+        id: parse-tfsec
+        run: |
+          if [ -f tfsec-results.json ]; then
+            echo "results=$(cat tfsec-results.json)" >> $GITHUB_OUTPUT
+          else
+            echo 'results="[]"' >> $GITHUB_OUTPUT
+          fi
+
+      - name: Parse checkov results
+        id: parse-checkov
+        run: |
+          if [ -f checkov-results.json ]; then
+            echo "results=$(cat checkov-results.json)" >> $GITHUB_OUTPUT
+          else
+            echo 'results="[]"' >> $GITHUB_OUTPUT
+          fi
+
+      - name: Parse trivy results
+        id: parse-trivy
+        run: |
+          if [ -f trivy-results.json ]; then
+            echo "results=$(cat trivy-results.json)" >> $GITHUB_OUTPUT
+          else
+            echo 'results="[]"' >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for existing security issues
+        id: check-existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh issue list --label "security" --state open --json number,title --jq '.[] | "\(.number):\(.title)"' > existing-issues.txt || echo "" > existing-issues.txt
+
+      - name: Create GitHub issues for HIGH/CRITICAL findings
+        id: create-issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          issues_created=0
+
+          issue_exists() {
+            local title="$1"
+            while IFS= read -r line; do
+              if [[ "$line" == *"$title"* ]]; then
+                return 0
+              fi
+            done < existing-issues.txt
+            return 1
+          }
+
+          # Process tfsec results
+          if [ -f tfsec-results.json ] && [ -s tfsec-results.json ]; then
+            echo "Processing tfsec results..."
+            while IFS= read -r finding; do
+              severity=$(echo "$finding" | jq -r '.severity')
+              title_text=$(echo "$finding" | jq -r '.title')
+              description=$(echo "$finding" | jq -r '.description')
+              file_path=$(echo "$finding" | jq -r '.file')
+
+              issue_title="[SECURITY] tfsec: ${severity} - ${title_text}"
+
+              if ! issue_exists "$issue_title"; then
+                body="**Tool:** tfsec | **Severity:** ${severity} | **Location:** ${file_path} | **Description:** ${description}"
+                gh issue create --title "$issue_title" --body "$body" --label "security"
+                echo "Created issue: $issue_title"
+                issues_created=$((issues_created + 1))
+              else
+                echo "Issue already exists: $issue_title"
+              fi
+            done < <(cat tfsec-results.json | jq -c '.[] | select(.severity == "HIGH" or .severity == "CRITICAL")' 2>/dev/null)
+          fi
+
+          # Process checkov results
+          if [ -f checkov-results.json ] && [ -s checkov-results.json ]; then
+            echo "Processing checkov results..."
+            while IFS= read -r finding; do
+              severity=$(echo "$finding" | jq -r '.check_result.configuration.record.result.overall_state // "HIGH"')
+              title_text=$(echo "$finding" | jq -r '.check.name')
+              description=$(echo "$finding" | jq -r '.check.description // "No description"')
+              file_path=$(echo "$finding" | jq -r '.resource // "Unknown"')
+
+              issue_title="[SECURITY] checkov: ${severity} - ${title_text}"
+
+              if ! issue_exists "$issue_title"; then
+                body="**Tool:** checkov | **Severity:** ${severity} | **Location:** ${file_path} | **Description:** ${description}"
+                gh issue create --title "$issue_title" --body "$body" --label "security"
+                echo "Created issue: $issue_title"
+                issues_created=$((issues_created + 1))
+              else
+                echo "Issue already exists: $issue_title"
+              fi
+            done < <(cat checkov-results.json | jq -c '.results.failed_checks[]? | select(.check_result.configuration.record.result.overall_state == "HIGH" or .check_result.configuration.record.result.overall_state == "CRITICAL")' 2>/dev/null)
+          fi
+
+          # Process trivy results
+          if [ -f trivy-results.json ] && [ -s trivy-results.json ]; then
+            echo "Processing trivy results..."
+            while IFS= read -r finding; do
+              severity=$(echo "$finding" | jq -r '.Severity')
+              title_text=$(echo "$finding" | jq -r '.Title // .VulnerabilityID')
+              description=$(echo "$finding" | jq -r '.Description // "No description"')
+              package=$(echo "$finding" | jq -r '.PkgName // "Unknown"')
+              installed=$(echo "$finding" | jq -r '.InstalledVersion // "Unknown"')
+
+              issue_title="[SECURITY] trivy: ${severity} - ${title_text}"
+
+              if ! issue_exists "$issue_title"; then
+                body="**Tool:** trivy | **Severity:** ${severity} | **Package:** ${package} (${installed}) | **Description:** ${description}"
+                gh issue create --title "$issue_title" --body "$body" --label "security"
+                echo "Created issue: $issue_title"
+                issues_created=$((issues_created + 1))
+              else
+                echo "Issue already exists: $issue_title"
+              fi
+            done < <(cat trivy-results.json | jq -c '.Results[]? | select(.Vulnerabilities != null) | .Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")' 2>/dev/null)
+          fi
+
+          echo "issues-created=$issues_created" >> $GITHUB_OUTPUT
+          echo "Total issues created: $issues_created"
+
+      - name: Generate workflow summary
+        run: |
+          echo "## Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          tfsec_count=0
+          checkov_count=0
+          trivy_count=0
+
+          if [ -f tfsec-results.json ] && [ -s tfsec-results.json ]; then
+            tfsec_count=$(cat tfsec-results.json | jq '[.[] | select(.severity == "HIGH" or .severity == "CRITICAL")] | length' 2>/dev/null || echo "0")
+          fi
+
+          if [ -f checkov-results.json ] && [ -s checkov-results.json ]; then
+            checkov_count=$(cat checkov-results.json | jq '[.results.failed_checks[]? | select(.check_result.configuration.record.result.overall_state == "HIGH" or .check_result.configuration.record.result.overall_state == "CRITICAL")] | length' 2>/dev/null || echo "0")
+          fi
+
+          if [ -f trivy-results.json ] && [ -s trivy-results.json ]; then
+            trivy_count=$(cat trivy-results.json | jq '[.Results[]? | select(.Vulnerabilities != null) | .Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' 2>/dev/null || echo "0")
+          fi
+
+          echo "| Tool | HIGH/CRITICAL Findings |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------------------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| tfsec (terraform) | $tfsec_count |" >> $GITHUB_STEP_SUMMARY
+          echo "| checkov (k8s) | $checkov_count |" >> $GITHUB_STEP_SUMMARY
+          echo "| trivy (general) | $trivy_count |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          total=$((tfsec_count + checkov_count + trivy_count))
+          echo "**Total HIGH/CRITICAL findings: $total**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$total" -eq 0 ]; then
+            echo "✅ No HIGH or CRITICAL security issues found!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ $total HIGH/CRITICAL security issues detected. Issues have been created in the repository." >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "*This scan runs weekly on Sunday at midnight UTC and can be triggered manually.*" >> $GITHUB_STEP_SUMMARY

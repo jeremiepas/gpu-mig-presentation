@@ -1,0 +1,74 @@
+---
+# Comprehensive Monitoring Application
+# Deploys Prometheus, Grafana, DCGM Exporter, Node Exporter, and Dashboards
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: observability-platform
+  namespace: argocd
+  labels:
+    environment: homelab
+    category: observability
+    tier: platform
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: homelab
+  
+  sources:
+    # Source 1: Common monitoring stack (Prometheus, Grafana base)
+    - repoURL: https://github.com/jeremiepas/gpu-mig-presentation.git
+      targetRevision: HEAD
+      path: k8s/common
+      directory:
+        recurse: true
+        include: '{03-prometheus.yaml,04-grafana*.yaml,09-node-exporter.yaml,12-kube-state-metrics.yaml,14-dcgm-exporter.yaml}'
+    
+    # Source 2: NixOS generated dashboards and Grafana config
+    - repoURL: https://github.com/jeremiepas/gpu-mig-presentation.git
+      targetRevision: HEAD
+      path: nixos/k8s/generated
+      directory:
+        recurse: true
+        include: '{grafana.yaml,billing-dashboard.yaml}'
+  
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  
+  # Ignore differences in dynamic fields
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP
+        - /spec/clusterIPs
+    - group: ""
+      kind: ConfigMap
+      name: grafana-dashboards
+      jsonPointers:
+        - /data
+  
+

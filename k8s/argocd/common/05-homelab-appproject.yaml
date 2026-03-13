@@ -1,0 +1,50 @@
+---
+# AppProject for Homelab Environment
+# Provides RBAC boundaries and resource restrictions
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: homelab
+  namespace: argocd
+  labels:
+    environment: homelab
+spec:
+  description: Homelab environment project for GPU workloads and monitoring
+  
+  # Source repositories
+  sourceRepos:
+    - 'https://github.com/jeremie-lesage/gentle-circuit.git'
+    - '*'
+  
+  # Destination clusters and namespaces
+  destinations:
+    - namespace: '*'
+      server: https://kubernetes.default.svc
+  
+  # Cluster resource whitelist (allow all)
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  
+  # Namespace resource whitelist (allow all)
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  
+  # Roles for RBAC
+  roles:
+    - name: homelab-admin
+      description: Full access to homelab applications
+      policies:
+        - p, proj:homelab:homelab-admin, applications, *, homelab/*, allow
+        - p, proj:homelab:homelab-admin, repositories, *, *, allow
+      groups:
+        - homelab-admins
+    
+    - name: homelab-viewer
+      description: Read-only access to homelab applications
+      policies:
+        - p, proj:homelab:homelab-viewer, applications, get, homelab/*, allow
+        - p, proj:homelab:homelab-viewer, applications, sync, homelab/*, deny
+      groups:
+        - homelab-viewers
