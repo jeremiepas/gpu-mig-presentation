@@ -106,7 +106,7 @@ spec:
 ### Environment Information
 - Kubernetes version: v1.34.4+k3s1
 - Node name: montech
-- Node IP: 192.168.1.96
+- Node IP: 100.120.26.64
 - Container runtime: containerd://2.1.5-k3s1
 
 ### Resolved Issues

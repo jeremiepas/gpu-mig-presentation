@@ -14,6 +14,9 @@ jobs:
   terraform-validate:
     name: Terraform Validate
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [prod, pre-prod, homelab]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,6 +27,7 @@ jobs:
           terraform_version: 1.7.0
 
       - name: Configure AWS credentials for Terraform
+        if: matrix.environment != 'homelab'
         run: |
           echo "AWS_ACCESS_KEY_ID=${{ secrets.SCW_ACCESS_KEY }}" >> $GITHUB_ENV
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.SCW_SECRET_KEY }}" >> $GITHUB_ENV
@@ -31,15 +35,16 @@ jobs:
           echo "AWS_ENDPOINT_URL_S3=https://s3.fr-par.scw.cloud" >> $GITHUB_ENV
 
       - name: Terraform Init
-        working-directory: ./terraform/environments/dev
+        working-directory: ./terraform/environments/${{ matrix.environment }}
         run: terraform init
 
       - name: Terraform Validate
-        working-directory: ./terraform/environments/dev
+        working-directory: ./terraform/environments/${{ matrix.environment }}
         run: terraform validate
 
       - name: Terraform Plan
-        working-directory: ./terraform/environments/dev
+        if: matrix.environment != 'homelab'
+        working-directory: ./terraform/environments/${{ matrix.environment }}
         run: terraform plan -out=tfplan
 
   yaml-validate:

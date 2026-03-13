@@ -1,328 +1,451 @@
-<div align="center">
-  <img src="./docs/assets/ragcode-banner.png" alt="RagCode MCP - Semantic Code Navigation with AI" width="100%">
-</div>
+# GPU MIG Presentation Infrastructure
 
-<div align="center">
+> **Multi-environment Terraform + Kubernetes infrastructure for demonstrating NVIDIA GPU MIG vs Time Slicing on Scaleway cloud**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Go Version](https://img.shields.io/badge/Go-1.25%2B-blue)](https://go.dev/)
-[![Go Report Card](https://goreportcard.com/badge/github.com/doITmagic/rag-code-mcp)](https://goreportcard.com/report/github.com/doITmagic/rag-code-mcp)
-[![MCP](https://img.shields.io/badge/MCP-Compatible-green)](https://modelcontextprotocol.io)
-![AI Ready](https://img.shields.io/badge/Codebase-AI%20Ready-blueviolet)
-![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local-brightgreen)
-![No Cloud](https://img.shields.io/badge/Cloud-Not%20Required-orange)
-![Zero Cost](https://img.shields.io/badge/API%20Costs-$0-success)
-[![GitHub Stars](https://img.shields.io/github/stars/doITmagic/rag-code-mcp?style=social)](https://github.com/doITmagic/rag-code-mcp)
+[![Terraform](https://img.shields.io/badge/Terraform-1.7.0-purple)](https://www.terraform.io/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-K3s-blue)](https://k3s.io/)
+[![GPU](https://img.shields.io/badge/GPU-NVIDIA%20L4-green)](https://www.nvidia.com/en-us/data-center/l4/)
 
-</div>
+## Overview
 
-# RagCode MCP - Make Your Codebase AI-Ready
+This infrastructure demonstrates NVIDIA GPU Multi-Instance GPU (MIG) and Time Slicing capabilities using Terraform, Kubernetes (K3s), and ArgoCD. It supports three distinct environments (prod, pre-prod, homelab) with clear separation between common and environment-specific configurations.
 
-> **The privacy-first MCP server that transforms any repository into an AI-ready codebase with semantic search and RAG.**
+**Key Features:**
+- 🏗️ **Modular Terraform** - Reusable modules for Scaleway instances, K3s clusters, and ArgoCD
+- 🌍 **Multi-Environment** - Separate configurations for prod, pre-prod, and homelab
+- 🔄 **GitOps Ready** - ArgoCD for automated Kubernetes deployments
+- 📊 **Full Monitoring** - Prometheus, Grafana, DCGM Exporter for GPU metrics
+- 🎯 **GPU Flexibility** - Switch between MIG and Time Slicing modes
 
-<!-- AI Agents: Read llms.txt for a summarized view of this project -->
+## 🚀 Quick Start
 
-RagCode is a **Model Context Protocol (MCP) server** that instantly makes your project **AI-ready**. It enables AI assistants like **GitHub Copilot**, **Cursor**, **Windsurf**, and **Claude** to understand your entire codebase through **semantic vector search**, bridging the gap between your code and Large Language Models (LLMs).
+### Prerequisites
+- Terraform >= 1.0
+- kubectl
+- Scaleway account (for prod/pre-prod)
+- SSH key pair
 
-Built with the official [Model Context Protocol Go SDK](https://github.com/modelcontextprotocol/go-sdk), RagCode provides **9 powerful tools** to index, search, and analyze code, making it the ultimate solution for **AI-ready software development**.
-
----
-
-## ⚡ One-Command Installation
-
-**No Go, no build tools, no configuration needed. Just Docker.**
-
-<table>
-<tr><td><b>Linux (amd64)</b></td></tr>
-<tr><td>
+### Deploy Production Environment
 
 ```bash
-curl -fsSL https://github.com/doITmagic/rag-code-mcp/releases/latest/download/rag-code-mcp_linux_amd64.tar.gz | tar xz && ./ragcode-installer -ollama=docker -qdrant=docker
+# 1. Set up credentials
+export SCW_ACCESS_KEY="<your-access-key>"
+export SCW_SECRET_KEY="<your-secret-key>"
+export SCW_PROJECT_ID="<your-project-id>"
+
+# 2. Initialize and deploy
+make init ENV=prod
+make validate ENV=prod
+make deploy-scaleway ENV=prod
+
+# 3. Get kubeconfig
+export INSTANCE_IP=$(terraform -chdir=terraform/environments/prod output -raw instance_ip)
+ssh -i ssh_key ubuntu@${INSTANCE_IP} "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
+sed -i "s|127.0.0.1|${INSTANCE_IP}|g" ~/.kube/config
+
+# 4. Verify deployment
+kubectl get pods -A
 ```
 
-</td></tr>
-<tr><td><b>macOS (Apple Silicon)</b></td></tr>
-<tr><td>
+### Deploy Homelab Environment
 
 ```bash
-curl -fsSL https://github.com/doITmagic/rag-code-mcp/releases/latest/download/rag-code-mcp_darwin_arm64.tar.gz | tar xz && ./ragcode-installer -ollama=docker -qdrant=docker
+# 1. Configure homelab IP
+cd terraform/environments/homelab
+echo 'homelab_ip = "192.168.1.100"' >> terraform.tfvars
+
+# 2. Deploy (no infrastructure provisioning, only K3s + ArgoCD setup)
+terraform init
+terraform apply
+
+# 3. Access cluster
+export KUBECONFIG=~/.kube/config-homelab
+kubectl get nodes
 ```
 
-</td></tr>
-<tr><td><b>macOS (Intel)</b></td></tr>
-<tr><td>
-
-```bash
-curl -fsSL https://github.com/doITmagic/rag-code-mcp/releases/latest/download/rag-code-mcp_darwin_amd64.tar.gz | tar xz && ./ragcode-installer -ollama=docker -qdrant=docker
-```
-
-</td></tr>
-<tr><td><b>Windows (PowerShell)</b></td></tr>
-<tr><td>
-
-```powershell
-Invoke-WebRequest -Uri "https://github.com/doITmagic/rag-code-mcp/releases/latest/download/rag-code-mcp_windows_amd64.zip" -OutFile "ragcode.zip"; Expand-Archive ragcode.zip -DestinationPath . -Force; .\ragcode-installer.exe -ollama=docker -qdrant=docker
-```
-
-</td></tr>
-</table>
-
-**That's it!** The installer automatically:
-- ✅ Downloads and installs the `rag-code-mcp` binary
-- ✅ Sets up Ollama and Qdrant in Docker containers
-- ✅ Downloads required AI models (`phi3:medium`, `nomic-embed-text`)
-- ✅ Configures your IDE (VS Code, Cursor, Windsurf, Claude Desktop)
-- ✅ Adds binaries to your PATH
-
-### 🔄 Keep Updated
-
-The auto-update feature is available starting with **v1.1.18**.
-
-**How to Upgrade:**
-
-1.  **If you are on an older version (< v1.1.18):**
-    Your version **does not know** the update command.
-    You must **re-run the installation command** (the curl command above) one last time.
-    *(Don't worry, your indexes and configuration will be preserved).*
-
-2.  **If you are on v1.1.18 or newer:**
-    Simply run:
-    ```bash
-    rag-code-mcp --update
-    ```
-
-**For new installations:**
-The update system is built-in. Use the installer once, then simply run `rag-code-mcp --update` anytime to get the latest features.
-
-📖 **[Full Installation Guide →](./QUICKSTART.md)** | **[Windows WSL Setup →](./QUICKSTART.md#windows-with-wsl-alternative)**
+📖 **[Full Deployment Guide →](./docs/QUICKSTART.md)**
 
 ---
 
-## 🎯 Zero-Config Usage
+## 🏗️ Architecture
 
-Once installed, **you don't need to configure anything**:
-
-1. **Open your project** in your IDE (VS Code, Cursor, Windsurf)
-2. **Ask your AI assistant** a question about your code
-3. **That's it!** RagCode automatically indexes and answers
+### Directory Structure
 
 ```
-💬 "How does the authentication system work?"
-💬 "Find all API endpoints in this codebase"
-💬 "Show me the User model and its relationships"
+terraform/
+├── modules/                          # Reusable Terraform modules
+│   ├── scaleway-instance/           # Scaleway GPU instance provisioning
+│   ├── k3s-cluster/                 # K3s installation
+│   └── argocd-bootstrap/            # ArgoCD deployment
+└── environments/
+    ├── prod/                        # Production (MIG mode)
+    ├── pre-prod/                    # Pre-production (Time Slicing, 4 replicas)
+    └── homelab/                     # Homelab (Time Slicing, 2 replicas)
+
+k8s/
+├── common/                          # Shared manifests (all environments)
+│   ├── 00-namespaces.yaml
+│   ├── 01-gpu-operator.yaml
+│   ├── 03-prometheus.yaml
+│   └── 04-grafana.yaml
+└── environments/
+    ├── prod/                        # Production-specific configs
+    │   ├── 02-mig-config.yaml
+    │   └── ingress-prod.yaml
+    ├── pre-prod/                    # Pre-prod-specific configs
+    │   ├── 02-timeslicing-config.yaml
+    │   └── ingress-preprod.yaml
+    └── homelab/                     # Homelab-specific configs
+        ├── 02-timeslicing-config.yaml
+        └── ingress-local.yaml
+
+k8s/argocd/
+├── common/                          # ArgoCD base installation
+└── environments/
+    ├── prod/applications.yaml       # Prod ArgoCD apps
+    ├── pre-prod/applications.yaml   # Pre-prod ArgoCD apps
+    └── homelab/applications.yaml    # Homelab ArgoCD apps
 ```
 
-First query triggers background indexing. Subsequent queries are instant.
+### Component Flow
+
+```mermaid
+graph TB
+    subgraph "Terraform Layer"
+        TM[Terraform Modules]
+        TE1[prod Environment]
+        TE2[pre-prod Environment]
+        TE3[homelab Environment]
+        
+        TE1 --> TM
+        TE2 --> TM
+        TE3 --> TM
+    end
+    
+    subgraph "Kubernetes Layer"
+        KC[Common K8s]
+        KE1[prod K8s]
+        KE2[pre-prod K8s]
+        KE3[homelab K8s]
+    end
+    
+    subgraph "ArgoCD Layer"
+        AC[ArgoCD Common]
+        AE1[ArgoCD prod]
+        AE2[ArgoCD pre-prod]
+        AE3[ArgoCD homelab]
+        
+        AE1 --> KC
+        AE1 --> KE1
+        AE2 --> KC
+        AE2 --> KE2
+        AE3 --> KC
+        AE3 --> KE3
+    end
+    
+    TE1 -.deploys.-> AE1
+    TE2 -.deploys.-> AE2
+    TE3 -.deploys.-> AE3
+```
 
 ---
 
-## 📋 Table of Contents
+## 🌍 Environments
 
-| Section | Description |
-|---------|-------------|
-| [🔒 Privacy & Security](#-privacy-first-100-local-ai) | 100% local, zero cloud dependencies |
-| [🚀 Why RagCode?](#-why-ragcode-performance-benefits) | Performance benefits, comparisons |
-| [🛠️ MCP Tools](#️-9-powerful-mcp-tools) | All 9 tools explained |
-| [🌐 Supported Languages](#-multi-language-code-intelligence) | Go, PHP, Python support |
-| [💻 IDE Integration](#-ide-integration) | Windsurf, Cursor, VS Code, Claude |
-| [⚙️ Configuration](./docs/CONFIGURATION.md) | Advanced settings, models, env vars |
-| [🐛 Troubleshooting](./docs/TROUBLESHOOTING.md) | Common issues and solutions |
-| [📚 Documentation](#-documentation) | All guides and references |
+| Environment | Terraform Path | State Backend | GPU Mode | Replicas | Usage |
+|------------|----------------|---------------|----------|----------|-------|
+| **prod** | `terraform/environments/prod/` | S3 (`prod/terraform.tfstate`) | MIG | N/A | Production deployments |
+| **pre-prod** | `terraform/environments/pre-prod/` | S3 (`pre-prod/terraform.tfstate`) | Time Slicing | 4 | Testing and staging |
+| **homelab** | `terraform/environments/homelab/` | Local | Time Slicing | 2 | Local GPU server (no provisioning) |
 
----
+### Environment Comparison
 
-## 🔒 Privacy-First: 100% Local AI
-
-**Your code never leaves your machine.** RagCode runs entirely on your local infrastructure:
-
-- ✅ **Local AI Models** - Uses Ollama for LLM and embeddings (runs on your hardware)
-- ✅ **Local Vector Database** - Qdrant runs in Docker on your machine
-- ✅ **Zero Cloud Dependencies** - No external API calls, no data transmission
-- ✅ **No API Costs** - Free forever, no usage limits or subscriptions
-- ✅ **Offline Capable** - Works without internet (after initial model download)
-
-**Perfect for:** Enterprise codebases, proprietary projects, security-conscious teams.
+| Feature | prod | pre-prod | homelab |
+|---------|------|----------|---------|
+| Infrastructure Provisioning | ✅ Scaleway | ✅ Scaleway | ❌ Existing server |
+| GPU Strategy | MIG | Time Slicing | Time Slicing |
+| State Backend | S3 | S3 | Local |
+| TLS/Ingress | ✅ Production domain | ✅ Pre-prod domain | ❌ .montech.mylab suffix |
+| Resource Limits | High | Medium | Low |
+| Network Policies | ✅ Enabled | ❌ Disabled | ❌ Disabled |
 
 ---
+## 🛠️ Makefile Targets
 
-## 🚀 Why RagCode? Performance Benefits
-
-### 5-10x Faster Code Understanding
-
-| Task | Without RagCode | With RagCode | Speedup |
-|------|----------------|--------------|---------|
-| Find authentication logic | 30-60s (read 10+ files) | 2-3s (semantic search) | **10-20x** |
-| Understand function signature | 15-30s (grep + read) | 1-2s (direct lookup) | **15x** |
-| Find all API endpoints | 60-120s (manual search) | 3-5s (hybrid search) | **20-40x** |
-
-### 98% Token Savings
-
-- **Without RagCode:** AI reads 5-10 files (~15,000 tokens) to find a function
-- **With RagCode:** AI gets exact function + context (~200 tokens)
-
-### RagCode vs Cloud-Based Solutions
-
-| Feature | RagCode (Local) | Cloud AI Search |
-|---------|-----------------|-----------------|
-| **Privacy** | ✅ 100% local | ❌ Code sent to cloud |
-| **Cost** | ✅ $0 forever | ❌ $20-100+/month |
-| **Offline** | ✅ Works offline | ❌ Requires internet |
-| **Data Control** | ✅ You own everything | ❌ Vendor controls data |
-
-### RagCode vs Generic RAG
-
-| Aspect | Generic RAG | RagCode |
+| Target | Description | Example |
 |--------|-------------|---------|
-| **Chunking** | Arbitrary text splits | Semantic units (functions, classes) |
-| **Metadata** | Filename only | Name, type, params, dependencies, lines |
-| **Results** | May return partial code | Always complete, runnable code |
+| `make init` | Initialize Terraform for environment | `make init ENV=prod` |
+| `make validate` | Validate Terraform configuration | `make validate ENV=pre-prod` |
+| `make deploy-scaleway` | Deploy to Scaleway (prod/pre-prod) | `make deploy-scaleway ENV=prod` |
+| `make deploy-homelab` | Deploy to homelab (existing server) | `make deploy-homelab` |
+| `make destroy` | Destroy environment | `make destroy ENV=prod` |
+| `make status` | Check pod status | `make status ENV=prod` |
+| `make switch-timeslicing` | Switch GPU to Time Slicing mode | `make switch-timeslicing ENV=prod` |
+| `make switch-mig` | Switch GPU to MIG mode | `make switch-mig ENV=prod` |
+| `make clean` | Clean local state files | `make clean` |
 
 ---
 
-## 🛠️ 9 Powerful MCP Tools
+## 🎮 GPU Modes
 
-| Tool | Description | Use When |
-|------|-------------|----------|
-| `search_code` | Semantic search by meaning | **First choice** for exploration |
-| `hybrid_search` | Keyword + semantic for exact matches | Need exact identifiers |
-| `get_function_details` | Complete function source code | Know exact function name |
-| `find_type_definition` | Type/class with fields and methods | Understand data models |
-| `find_implementations` | All usages and callers | Before refactoring |
-| `list_package_exports` | All exported symbols | Explore unfamiliar packages |
-| `search_docs` | Search Markdown documentation | Setup, architecture info |
-| `get_code_context` | Code snippet with context | Have file:line reference |
-| `index_workspace` | Reindex codebase | After major changes |
+### MIG (Multi-Instance GPU)
 
-📖 **[Full Tool Reference →](./docs/tool_schema_v2.md)**
+Partitions a single GPU into multiple isolated instances with dedicated memory and compute resources.
 
----
+**Use Cases:**
+- Multi-tenant environments
+- Guaranteed QoS per workload
+- Strict resource isolation
 
-## 🌐 Multi-Language Code Intelligence
+**Configuration (prod):**
+```yaml
+# k8s/environments/prod/02-mig-config.yaml
+sharing:
+  mig:
+    strategy: mixed
+```
 
-| Language | Support Level | Features | Docs |
-|----------|--------------|----------|------|
-| **Go** | ✅ Full | Functions, types, interfaces, methods, AST analysis | [📖 Go Analyzer](./internal/ragcode/analyzers/golang/README.md) |
-| **PHP** | ✅ Full | Classes, methods, interfaces, traits, PHPDoc | [📖 PHP Analyzer](./internal/ragcode/analyzers/php/README.md) |
-| **PHP + Laravel** | ✅ Full | Eloquent models, routes, controllers, middleware | [📖 Laravel Analyzer](./internal/ragcode/analyzers/php/laravel/README.md) |
-| **Python** | ✅ Full | Classes, functions, decorators, type hints, mixins | [📖 Python Analyzer](./internal/ragcode/analyzers/python/README.md) |
-| **JavaScript/TypeScript** | 🔜 Planned | Coming soon (tree-sitter based) | - |
+### Time Slicing
 
-### Multi-Workspace Support
+Allows multiple workloads to share a single GPU through time-multiplexing.
 
-RagCode automatically detects and manages multiple workspaces with isolated indexes.
+**Use Cases:**
+- Development/testing environments
+- Batch processing
+- Cost optimization
 
-📖 **[Workspace Detection →](./internal/workspace/README.md)** - Auto-detection, stable IDs, caching
+**Configuration (pre-prod):**
+```yaml
+# k8s/environments/pre-prod/02-timeslicing-config.yaml
+sharing:
+  timeSlicing:
+    replicas: 4
+```
 
----
-
-## 💻 IDE Integration
-
-RagCode works with all major AI-powered IDEs:
-
-| IDE | Status | Setup |
-|-----|--------|-------|
-| **Windsurf** | ✅ Auto-configured | Just install |
-| **Cursor** | ✅ Auto-configured | Just install |
-| **VS Code + Copilot** | ✅ Auto-configured | Requires VS Code 1.95+ |
-| **Claude Desktop** | ✅ Auto-configured | Just install |
-| **Antigravity** | ✅ Auto-configured | Just install |
-
-📖 **[Manual IDE Setup →](./docs/IDE-SETUP.md)** | **[VS Code + Copilot Guide →](./docs/vscode-copilot-integration.md)**
+**Configuration (homelab):**
+```yaml
+# k8s/environments/homelab/02-timeslicing-config.yaml
+sharing:
+  timeSlicing:
+    replicas: 2
+```
 
 ---
 
-## 📦 System Requirements
+## 📊 Monitoring Stack
 
-### Minimum Requirements
+All environments include a complete monitoring stack:
 
-| Component | Requirement | Notes |
-|-----------|-------------|-------|
-| **CPU** | 4 cores | For running Ollama models |
-| **RAM** | 16 GB | 8 GB for `phi3:medium`, 4 GB for `nomic-embed-text`, 4 GB system |
-| **Disk** | 10 GB free | ~8 GB for models + 2 GB for data |
-| **OS** | Linux, macOS, Windows | Docker required for Qdrant |
+| Component | Port | Credentials | Purpose |
+|-----------|------|-------------|---------|
+| **Grafana** | 30300 | admin/admin | Visualization dashboards |
+| **Prometheus** | 30090 | N/A | Metrics collection |
+| **DCGM Exporter** | 9400 | N/A | GPU metrics |
+| **Node Exporter** | 9100 | N/A | Node metrics |
+| **Kube State Metrics** | 8080 | N/A | Kubernetes object metrics |
 
-### Recommended (for better performance)
+**Access Grafana:**
+```bash
+# Get instance IP
+export INSTANCE_IP=$(terraform -chdir=terraform/environments/prod output -raw instance_ip)
 
-| Component | Requirement | Notes |
-|-----------|-------------|-------|
-| **CPU** | 8+ cores | Better concurrent operations |
-| **RAM** | 32 GB | Comfortable multi-workspace indexing |
-| **GPU** | NVIDIA 8GB+ VRAM | Significantly speeds up Ollama (optional) |
-| **Disk** | 20 GB SSD | Faster indexing and search |
+# Open in browser
+open http://${INSTANCE_IP}:30300
+```
 
-📖 **[Full Requirements →](./docs/CONFIGURATION.md#-system-requirements)**
+---
+
+## 🔄 GitOps with ArgoCD
+
+ArgoCD automatically syncs Kubernetes manifests from Git to your cluster.
+
+### ArgoCD Applications
+
+Each environment has two ArgoCD applications:
+
+1. **common-infrastructure** - Deploys manifests from `k8s/common/`
+2. **{env}-specific** - Deploys manifests from `k8s/environments/{env}/`
+
+### Access ArgoCD UI
+
+```bash
+# Port-forward ArgoCD server
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+# Get initial admin password
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d
+
+# Open in browser
+open https://localhost:8080
+```
+
+### Sync Applications
+
+```bash
+# Sync all applications in environment
+argocd app sync -l environment=prod
+
+# Sync specific application
+argocd app sync common-infrastructure
+
+# View application status
+argocd app get prod-specific
+```
+
+---
+
+## 🔐 Security
+
+### Secrets Management
+
+- ✅ Terraform state encrypted at rest (S3 backend)
+- ✅ SSH keys excluded from Git (`.gitignore`)
+- ✅ Scaleway credentials via environment variables
+- ✅ Network policies in production environment
+- ✅ RBAC for ArgoCD applications
+
+### Excluded from Git
+
+```
+terraform.tfvars
+credentials*.env
+ssh_key*
+*.tfstate
+*.tfstate.backup
+```
+
+### Required Environment Variables
+
+```bash
+export SCW_ACCESS_KEY="<your-access-key>"
+export SCW_SECRET_KEY="<your-secret-key>"
+export SCW_PROJECT_ID="<your-project-id>"
+```
+
+---
+
+## 🔧 Migration & Maintenance
+
+### Backup Current State
+
+```bash
+./scripts/backup-current-state.sh
+```
+
+Creates timestamped backup of:
+- Terraform state files
+- Kubernetes manifests
+- ArgoCD applications
+
+### Classify Manifests
+
+```bash
+./scripts/classify-manifests.sh
+```
+
+Automatically categorizes manifests as common or environment-specific.
+
+### Rollback Migration
+
+```bash
+./scripts/rollback-migration.sh backups/20240313_120000
+```
+
+Restores Terraform state and Kubernetes manifests from backup.
 
 ---
 
 ## 📚 Documentation
 
-### Getting Started
-- **[Quick Start Guide](./QUICKSTART.md)** - Install in 5 minutes
-- **[IDE Setup](./docs/IDE-SETUP.md)** - Manual IDE configuration
+| Document | Description |
+|----------|-------------|
+| **[AGENTS.md](./AGENTS.md)** | AI agent guidelines and project structure |
+| **[MIGRATION.md](./MIGRATION.md)** | Step-by-step migration guide |
+| **[ARCHITECTURE.md](./ARCHITECTURE.md)** | Architecture diagrams and design |
+| **[QUICKSTART.md](./docs/QUICKSTART.md)** | Quick start deployment guide |
 
-### Configuration & Operations
-- **[Configuration Guide](./docs/CONFIGURATION.md)** - Models, env vars, advanced settings
-- **[Troubleshooting](./docs/TROUBLESHOOTING.md)** - Common issues and solutions
-- **[Docker Setup](./docs/docker-setup.md)** - Docker configuration details
+---
 
-### Language Analyzers
-- **[Go Analyzer](./internal/ragcode/analyzers/golang/README.md)** - Functions, types, interfaces, GoDoc
-- **[PHP Analyzer](./internal/ragcode/analyzers/php/README.md)** - Classes, traits, PHPDoc
-- **[Laravel Analyzer](./internal/ragcode/analyzers/php/laravel/README.md)** - Eloquent, routes, controllers
-- **[Python Analyzer](./internal/ragcode/analyzers/python/README.md)** - Classes, decorators, type hints
+## 💰 Cost Estimation
 
-### Technical Reference
-- **[Architecture Overview](./docs/architecture.md)** - Technical deep dive
-- **[Tool Schema Reference](./docs/tool_schema_v2.md)** - Complete API documentation
-- **[Incremental Indexing](./docs/incremental_indexing.md)** - How smart indexing works
-- **[Workspace Detection](./internal/workspace/README.md)** - Multi-workspace support
-- **[VS Code + Copilot](./docs/vscode-copilot-integration.md)** - Detailed Copilot setup
+| Environment | Instance Type | GPU | Cost (Scaleway) |
+|------------|---------------|-----|-----------------|
+| **prod** | H100-1-80G | NVIDIA L4-24GB | ~€0.85/hour |
+| **pre-prod** | GPU-3070-S | NVIDIA RTX 3070 | ~€0.40/hour |
+| **homelab** | N/A | Your GPU | €0 (no cloud costs) |
 
-### External Resources
-- **[Model Context Protocol](https://modelcontextprotocol.io)** - Official MCP specification
-- **[Ollama](https://ollama.com)** - Local LLM and embedding models
-- **[Qdrant](https://qdrant.tech)** - Vector database
+---
+
+## 🐛 Troubleshooting
+
+### Terraform State Lock
+
+```bash
+# Force unlock if needed
+terraform -chdir=terraform/environments/prod force-unlock <LOCK_ID>
+```
+
+### Pod Not Starting
+
+```bash
+# Check pod status
+kubectl describe pod <pod-name> -n <namespace>
+
+# View logs
+kubectl logs <pod-name> -n <namespace>
+```
+
+### GPU Not Available
+
+```bash
+# Check GPU nodes
+kubectl get nodes -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}'
+
+# Check GPU operator pods
+kubectl get pods -n gpu-operator
+```
+
+### ArgoCD Sync Failed
+
+```bash
+# View application details
+argocd app get <app-name>
+
+# Manual sync
+argocd app sync <app-name> --force
+```
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Here's how you can help:
+Contributions welcome! Please:
 
-- 🐛 **[Report Bugs](https://github.com/doITmagic/rag-code-mcp/issues/new)**
-- 💡 **Request Features** - Share ideas for new tools or languages
-- 🔧 **Submit PRs** - Improve code, docs, or add features
-- ⭐ **[Star the Project](https://github.com/doITmagic/rag-code-mcp)** - Show your support
-
-### Development Setup
-```bash
-git clone https://github.com/doITmagic/rag-code-mcp.git
-cd rag-code-mcp
-go mod download
-go run ./cmd/rag-code-mcp
-```
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ---
 
 ## 📄 License
 
-RagCode MCP is open source software licensed under the **[MIT License](./LICENSE)**.
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
 
 ---
 
-## 🏷️ Keywords & Topics
+## 🏷️ Keywords
 
-`semantic-code-search` `rag` `retrieval-augmented-generation` `mcp-server` `model-context-protocol` `ai-code-assistant` `vector-search` `code-navigation` `ollama` `qdrant` `github-copilot` `cursor-ai` `windsurf` `go` `php` `laravel` `python` `django` `flask` `fastapi` `code-intelligence` `ast-analysis` `embeddings` `llm-tools` `local-ai` `privacy-first` `offline-ai` `self-hosted` `on-premise` `zero-cost` `no-cloud` `private-code-search` `enterprise-ai` `secure-coding-assistant`
+`terraform` `kubernetes` `k3s` `gpu` `nvidia` `mig` `time-slicing` `scaleway` `argocd` `gitops` `prometheus` `grafana` `infrastructure-as-code` `multi-environment` `devops` `cloud-infrastructure`
 
 ---
 
 <div align="center">
 
-**Built with ❤️ for developers who want smarter AI code assistants**
+**Built for demonstrating NVIDIA GPU sharing strategies**
 
-⭐ **[Star us on GitHub](https://github.com/doITmagic/rag-code-mcp)** if RagCode helps your workflow!
-
-**Questions?** [Open an Issue](https://github.com/doITmagic/rag-code-mcp/issues) • [Read the Docs](./QUICKSTART.md) • [Join Discussions](https://github.com/doITmagic/rag-code-mcp/discussions)
+💡 **Questions?** Open an issue or check the [documentation](./docs/)
 
 </div>

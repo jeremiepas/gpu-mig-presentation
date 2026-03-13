@@ -1,35 +1,60 @@
+# Variable declarations for prod environment
+
 variable "region" {
-  description = "Scaleway region"
   type        = string
+  description = "Scaleway region"
   default     = "fr-par"
 }
 
 variable "zone" {
-  description = "Scaleway zone"
   type        = string
-  default     = "fr-par-2"
+  description = "Scaleway zone"
+  default     = "fr-par-1"
 }
 
 variable "project_id" {
-  description = "Scaleway project ID"
   type        = string
-  default     = "bbaff92f-ddd8-493b-8d03-05de850deb29"
+  description = "Scaleway project ID"
 }
 
 variable "instance_type" {
-  description = "Instance type for prod environment"
   type        = string
-  default     = "GPU-START1-S"
+  description = "Scaleway instance type"
+  default     = "H100-1-80G"
 }
 
 variable "instance_name" {
-  description = "Instance name"
   type        = string
-  default     = "prod-gpu-mig-demo"
+  description = "Instance name"
+  default     = "gpu-mig-prod"
 }
 
 variable "tags" {
-  description = "Tags for resources"
   type        = list(string)
-  default     = ["prod", "gpu-mig", "presentation"]
+  description = "Tags to apply to resources"
+  default     = ["prod", "gpu", "mig-demo"]
+}
+
+variable "root_volume_size" {
+  type        = number
+  description = "Root volume size in GB"
+  default     = 50
+}
+
+variable "image_id" {
+  type        = string
+  description = "Scaleway image ID"
+  default     = "ubuntu_jammy"
+}
+
+variable "k3s_version" {
+  type        = string
+  description = "K3s version to install"
+  default     = "v1.28.5+k3s1"
+}
+
+variable "git_repo_url" {
+  type        = string
+  description = "Git repository URL for ArgoCD applications"
+  default     = "https://github.com/jeremie-lesage/gentle-circuit.git"
 }

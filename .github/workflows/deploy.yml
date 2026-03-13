@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to deploy (dev/prod)'
+        description: 'Environment to deploy (prod/pre-prod)'
         required: true
         type: choice
-        default: 'dev'
+        default: 'prod'
         options:
-          - dev
           - prod
+          - pre-prod
 
 env:
   SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
@@ -44,20 +44,20 @@ jobs:
             echo "AWS_ENDPOINT_URL_S3=https://s3.fr-par.scw.cloud" >> $GITHUB_ENV
 
        - name: Terraform Init
-         working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'dev' }}
+         working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'prod' }}
          run: terraform init
 
        - name: Terraform Plan
-         working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'dev' }}
+         working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'prod' }}
          run: terraform plan -out=tfplan
 
        - name: Terraform Apply
-         working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'dev' }}
+         working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'prod' }}
          run: terraform apply -auto-approve tfplan
 
        - name: Save Outputs
          id: outputs
-         working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'dev' }}
+         working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'prod' }}
          run: |
            echo "instance_ip=$(terraform output -raw instance_ip)" >> $GITHUB_OUTPUT
            echo "instance_dns=$(terraform output -raw instance_dns)" >> $GITHUB_OUTPUT
@@ -85,7 +85,7 @@ jobs:
            echo "AWS_ENDPOINT_URL_S3=https://s3.fr-par.scw.cloud" >> $GITHUB_ENV
 
       - name: Terraform Init
-        working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'dev' }}
+        working-directory: ./terraform/environments/${{ github.event.inputs.environment || 'prod' }}
         run: terraform init
 
       - name: Setup SSH key
@@ -121,7 +121,7 @@ jobs:
 
       - name: Deploy cluster using script
         env:
-          ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
+          ENVIRONMENT: ${{ github.event.inputs.environment || 'prod' }}
         run: |
           source credentials.env
           ./deploy-cluster.sh $ENVIRONMENT
@@ -140,7 +140,7 @@ jobs:
           kubectl get pods -A
 
   deploy-mig:
-    name: Deploy MIG Demo
+    name: Deploy GPU Configuration
     needs: [terraform, deploy-cluster]
     runs-on: ubuntu-latest
     steps:
@@ -157,10 +157,13 @@ jobs:
           sed -i 's|127.0.0.1|${{ needs.terraform.outputs.instance_ip }}|g' ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Deploy MIG Config
+      - name: Deploy Common Manifests
         run: |
-          kubectl apply -f k8s/02-mig-config.yaml
-          kubectl apply -f k8s/07-moshi-mig.yaml
+          kubectl apply -f k8s/common/
+
+      - name: Deploy Environment-Specific Manifests
+        run: |
+          kubectl apply -f k8s/environments/${{ github.event.inputs.environment || 'prod' }}/
 
       - name: Final Status
         run: |
@@ -195,12 +198,8 @@ jobs:
 
       - name: Deploy Argo CD
         run: |
-          kubectl apply -f k8s/argocd/00-namespace.yaml
-          kubectl apply -f k8s/argocd/01-argocd-install.yaml
-          kubectl apply -f k8s/argocd/04-argocd-appproject.yaml
-          if [ -f k8s/argocd/03-applications.yaml ]; then
-            kubectl apply -f k8s/argocd/03-applications.yaml
-          fi
+          kubectl apply -f k8s/argocd/common/
+          kubectl apply -f k8s/argocd/environments/${{ github.event.inputs.environment || 'prod' }}/
 
       - name: Wait for Argo CD to be ready
         run: |

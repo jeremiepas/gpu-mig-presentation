@@ -1,0 +1,11 @@
+# Example terraform.tfvars for homelab environment
+# Copy this file to terraform.tfvars and fill in your values
+
+# Homelab Server Configuration
+homelab_ip = "192.168.1.100"  # Replace with your homelab server IP
+
+# K3s Configuration
+k3s_version = "v1.28.5+k3s1"
+
+# ArgoCD Configuration
+git_repo_url = "https://github.com/jeremie-lesage/gentle-circuit.git"

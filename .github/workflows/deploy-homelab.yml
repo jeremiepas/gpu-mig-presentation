@@ -1,0 +1,81 @@
+name: Deploy Homelab
+
+on:
+  workflow_dispatch:
+
+env:
+  TF_VAR_homelab_ip: ${{ secrets.HOMELAB_IP }}
+  TF_VAR_git_repo_url: ${{ github.server_url }}/${{ github.repository }}
+
+jobs:
+  deploy-homelab:
+    name: Deploy to Homelab
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keygen -R ${{ secrets.HOMELAB_IP }} || true
+
+      - name: Terraform Init
+        working-directory: ./terraform/environments/homelab
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ./terraform/environments/homelab
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ./terraform/environments/homelab
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ./terraform/environments/homelab
+        run: terraform apply -auto-approve tfplan
+
+      - name: Setup kubectl
+        run: |
+          mkdir -p ~/.kube
+          ssh -o StrictHostKeyChecking=no ubuntu@${{ secrets.HOMELAB_IP }} "sudo cat /etc/rancher/k3s/k3s.yaml" > ~/.kube/config
+          sed -i 's|127.0.0.1|${{ secrets.HOMELAB_IP }}|g' ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy Common Manifests
+        run: |
+          kubectl apply -f k8s/common/
+
+      - name: Deploy Homelab-Specific Manifests
+        run: |
+          kubectl apply -f k8s/environments/homelab/
+
+      - name: Deploy Argo CD
+        run: |
+          kubectl apply -f k8s/argocd/common/
+          kubectl apply -f k8s/argocd/environments/homelab/
+
+      - name: Wait for Argo CD to be ready
+        run: |
+          kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=300s || true
+
+      - name: Display Status
+        run: |
+          echo "=== Deployment Status ==="
+          kubectl get pods -A
+          echo ""
+          echo "=== GPU Nodes ==="
+          kubectl get nodes -o wide
+          echo ""
+          echo "=== GPU Devices ==="
+          kubectl get nodes -o jsonpath='{.items[*].status.allocatable.nvidia\.com/gpu}'
+          echo ""
+          echo "=== Homelab deployment complete ==="

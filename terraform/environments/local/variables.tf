@@ -1,7 +1,7 @@
 variable "gpu_host" {
   description = "IP address of the local GPU machine"
   type        = string
-  default     = "192.168.1.96"
+  default     = "100.120.26.64"
 }
 
 variable "gpu_user" {

@@ -4,13 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Environment to destroy (dev/prod)'
+        description: 'Environment to destroy (prod/pre-prod/homelab)'
         required: true
         type: choice
-        default: 'dev'
+        default: 'prod'
         options:
-          - dev
           - prod
+          - pre-prod
+          - homelab
       confirm:
         description: 'Type "destroy" to confirm'
         required: true
@@ -35,6 +36,7 @@ jobs:
           terraform_version: 1.7.0
 
       - name: Configure AWS credentials for Terraform
+        if: github.event.inputs.environment != 'homelab'
         run: |
           echo "AWS_ACCESS_KEY_ID=${{ secrets.SCW_ACCESS_KEY }}" >> $GITHUB_ENV
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.SCW_SECRET_KEY }}" >> $GITHUB_ENV

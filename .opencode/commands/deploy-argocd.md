@@ -5,7 +5,7 @@ agent: build
 ---
 
 ```bash
-export KUBECONFIG=/home/jeremie/Documents/perso/gpu-mig-presentation/k3s-config.yaml
+export KUBECONFIG="$PWD/k3s-config.yaml"
 ```
 
 
